@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}العُهدة والجلسات{% endblock %}
+{% block page_title %}العُهدة والجلسات 💰{% endblock %}
+
+{% block extra_css %}
+<style>
+    .session-status {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 8px 16px; border-radius: 20px; font-weight: 700;
+    }
+    .session-open   { background: #ecfdf5; color: #065f46; border: 2px solid #10b981; }
+    .session-closed { background: #fef2f2; color: #991b1b; border: 2px solid #ef4444; }
+
+    .pulse-dot { width:10px; height:10px; border-radius:50%; display:inline-block; animation:pulse 2s infinite; }
+    .pulse-dot.green { background:#10b981; }
+    .pulse-dot.red   { background:#ef4444; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .balance-card {
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color:#fff; border-radius:16px; padding:24px;
+    }
+    .balance-amount { font-size:2.5rem; font-weight:900; }
+
+    .movement-item {
+        display:flex; justify-content:space-between; align-items:center;
+        padding:11px 12px; border-bottom:1px solid #f1f5f9;
+    }
+    .movement-item:last-child { border-bottom:none; }
+
+    .mov-type-badge {
+        display:inline-flex; align-items:center; gap:4px;
+        border-radius:20px; padding:3px 10px;
+        font-size:.74rem; font-weight:800;
+    }
+    .mov-deposit  { background:#ecfdf5; color:#065f46; }
+    .mov-sale     { background:#eff6ff; color:#1d4ed8; }
+    .mov-return   { background:#fff7ed; color:#c2410c; }
+    .mov-withdraw { background:#fef2f2; color:#991b1b; }
+
+    .mov-amount { font-weight:900; font-size:1rem; }
+    .mov-plus   { color:#10b981; }
+    .mov-minus  { color:#ef4444; }
+    .mov-orange { color:#c2410c; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-cash-stack"></i> العُهدة والجلسات النقدية</h3>
+        <p class="text-muted mb-0">إدارة جلسات العمل والأرصدة النقدية</p>
+    </div>
+    <div>
+        {% if current_session %}
+        <span class="session-status session-open"><span class="pulse-dot green"></span> جلسة مفتوحة</span>
+        {% else %}
+        <span class="session-status session-closed"><span class="pulse-dot red"></span> لا توجد جلسة مفتوحة</span>
+        {% endif %}
+    </div>
+</div>
+
+{% if not current_session %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-door-open"></i> فتح جلسة جديدة</div>
+            <div class="card-body">
+                <form id="open-session-form">
+                    <div class="mb-3">
+                        <label class="form-label">الرصيد الافتتاحي (النقدية الموجودة في الدرج)</label>
+                        <input type="number" id="opening-balance" class="form-control form-control-lg"
+                               value="{{ last_session.closing_balance if last_session else 0 }}"
+                               min="0" step="0.001" required>
+                        {% if last_session %}
+                        <small class="text-muted">آخر رصيد إغلاق: {{ "%.3f" % last_session.closing_balance }}</small>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-play-circle"></i> بدء الجلسة
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if current_session %}
+<!-- بطاقة الرصيد -->
+<div class="row g-3 mb-4">
+    <div class="col-md-8">
+        <div class="balance-card">
+            <div style="font-size:.9rem;opacity:.9;">الرصيد المتوقع في الدرج</div>
+            <div class="balance-amount" id="expected-balance">—</div>
+            <small style="opacity:.8;">
+                تم الفتح: {{ current_session.opened_at }}
+                &nbsp;|&nbsp; رصيد الافتتاح: {{ "%.3f" % current_session.opening_balance }}
+            </small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center d-flex flex-column align-items-center justify-content-center">
+                <i class="bi bi-receipt" style="font-size:2rem;color:#6366f1;"></i>
+                <div style="font-size:.85rem;color:#64748b;">عدد الفواتير</div>
+                <div style="font-size:2rem;font-weight:900;">{{ session_stats.invoice_count if session_stats else 0 }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- إحصائيات المبيعات -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card bg-gradient-success">
+            <i class="bi bi-cash stat-icon"></i>
+            <div class="stat-label">مبيعات نقدية</div>
+            <div class="stat-value">{{ "%.3f" % (session_stats.cash_sales if session_stats else 0) }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card bg-gradient-info">
+            <i class="bi bi-credit-card stat-icon"></i>
+            <div class="stat-label">مبيعات بطاقة</div>
+            <div class="stat-value">{{ "%.3f" % (session_stats.card_sales if session_stats else 0) }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card bg-gradient-warning">
+            <i class="bi bi-bank stat-icon"></i>
+            <div class="stat-label">تحويلات</div>
+            <div class="stat-value">{{ "%.3f" % (session_stats.transfer_sales if session_stats else 0) }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;">
+            <i class="bi bi-arrow-return-right stat-icon"></i>
+            <div class="stat-label">مرتجعات نقدية</div>
+            <div class="stat-value" id="stat-returns">
+                {{ "%.3f" % (movements | selectattr('type','equalto','return') | sum(attribute='amount') if movements else 0) }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- حركات النقدية + إغلاق -->
+<div class="row g-3 mb-4">
+    <div class="col-md-7">
+        <div class="card h-100">
+            <div class="card-header">
+                <span><i class="bi bi-arrow-left-right"></i> حركات النقدية</span>
+            </div>
+            <div class="card-body p-0" style="max-height:340px;overflow-y:auto;">
+                {% if movements %}
+                    {% for m in movements %}
+                    <div class="movement-item">
+                        <div class="d-flex align-items-center gap-2">
+                            {% if m.type == 'deposit' %}
+                                <span class="mov-type-badge mov-deposit"><i class="bi bi-plus-circle-fill"></i> إيداع</span>
+                            {% elif m.type == 'sale' %}
+                                <span class="mov-type-badge mov-sale"><i class="bi bi-cart-fill"></i> مبيعات</span>
+                            {% elif m.type == 'return' %}
+                                <span class="mov-type-badge mov-return"><i class="bi bi-arrow-return-right"></i> مرتجع</span>
+                            {% else %}
+                                <span class="mov-type-badge mov-withdraw"><i class="bi bi-dash-circle-fill"></i> سحب</span>
+                            {% endif %}
+                            <span class="text-muted" style="font-size:.82rem;">{{ m.description }}</span>
+                        </div>
+                        <div class="text-end">
+                            <div class="mov-amount
+                                {% if m.type in ['deposit','sale'] %}mov-plus
+                                {% elif m.type == 'return' %}mov-orange
+                                {% else %}mov-minus{% endif %}">
+                                {% if m.type in ['deposit','sale'] %}+{% else %}−{% endif %}{{ "%.3f" % m.amount }}
+                            </div>
+                            <small class="text-muted">{{ m.created_at }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-4">لا توجد حركات نقدية</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-lock"></i> إغلاق الجلسة</div>
+            <div class="card-body">
+                <form id="close-session-form">
+                    <div class="mb-3">
+                        <label class="form-label">النقدية الفعلية الموجودة في الدرج</label>
+                        <input type="number" id="actual-cash" class="form-control form-control-lg"
+                               step="0.001" min="0" required placeholder="0.000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">ملاحظات</label>
+                        <textarea id="close-notes" class="form-control" rows="2"
+                                  placeholder="أي ملاحظات على الجلسة..."></textarea>
+                    </div>
+                    <div class="alert alert-info mb-3" id="close-preview" style="display:none;font-size:.87rem;">
+                        <div class="d-flex justify-content-between">
+                            <span>المبيعات النقدية:</span>
+                            <strong id="prev-sales">0.000</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <span>المرتجعات النقدية:</span>
+                            <strong id="prev-returns" class="text-warning">0.000</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <span>النقدية المتوقعة:</span>
+                            <strong id="expected-cash-preview">0.000</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1 pt-1" style="border-top:1px dashed #ccc;">
+                            <span>الفرق:</span>
+                            <strong id="difference-preview">0.000</strong>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-danger btn-lg w-100">
+                        <i class="bi bi-lock-fill"></i> إغلاق الجلسة وإنهاء الدوام
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- آخر الجلسات المغلقة -->
+{% if closed_sessions %}
+<div class="card">
+    <div class="card-header"><i class="bi bi-clock-history"></i> آخر الجلسات المغلقة</div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>المستخدم</th>
+                    <th>الرصيد الافتتاحي</th>
+                    <th>إجمالي المبيعات</th>
+                    <th>النقدية المتوقعة</th>
+                    <th>النقدية الفعلية</th>
+                    <th>الفرق</th>
+                    <th>فتحت</th>
+                    <th>أغلقت</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for s in closed_sessions %}
+            <tr>
+                <td class="fw-semibold">{{ s.user_name }}</td>
+                <td>{{ "%.3f" % s.opening_balance }}</td>
+                <td>{{ "%.3f" % (s.total_sales or 0) }}</td>
+                <td>{{ "%.3f" % (s.expected_cash or 0) }}</td>
+                <td>{{ "%.3f" % (s.actual_cash or 0) }}</td>
+                <td>
+                    <span class="badge {% if (s.difference or 0) == 0 %}bg-success{% elif (s.difference or 0) > 0 %}bg-info{% else %}bg-danger{% endif %}">
+                        {{ "%+.3f" % (s.difference or 0) }}
+                    </span>
+                </td>
+                <td>{{ s.opened_at }}</td>
+                <td>{{ s.closed_at }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if not current_session %}
+document.getElementById('open-session-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    fetch('/api/cash-session/open', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({
+            csrf_token      : CSRF_TOKEN,
+            opening_balance : document.getElementById('opening-balance').value
+        })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert(d.message || 'حدث خطأ'); });
+});
+{% endif %}
+
+{% if current_session %}
+/*
+  الرصيد المتوقع:
+    deposits  = الإيداعات (تشمل الرصيد الافتتاحي المُسجَّل كـ deposit)
+    cashSales = المبيعات النقدية
+    returns   = المرتجعات النقدية (تُخصم)
+    withdraws = السحوبات
+  expected = deposits + cashSales - returns - withdraws
+*/
+const DATA = {
+    cashSales : {{ session_stats.cash_sales if session_stats else 0 }},
+    deposits  : {{ movements | selectattr('type','equalto','deposit')  | sum(attribute='amount') if movements else 0 }},
+    returns   : {{ movements | selectattr('type','equalto','return')   | sum(attribute='amount') if movements else 0 }},
+    withdraws : {{ movements | selectattr('type','equalto','withdraw') | sum(attribute='amount') if movements else 0 }}
+};
+
+function calcExpected() {
+    return DATA.deposits + DATA.cashSales - DATA.returns - DATA.withdraws;
+}
+
+// عرض الرصيد فور تحميل الصفحة
+document.getElementById('expected-balance').innerText = calcExpected().toFixed(3);
+
+document.getElementById('actual-cash').addEventListener('input', function() {
+    const expected = calcExpected();
+    const actual   = parseFloat(this.value) || 0;
+    const diff     = actual - expected;
+
+    document.getElementById('prev-sales').innerText    = DATA.cashSales.toFixed(3);
+    document.getElementById('prev-returns').innerText  = DATA.returns.toFixed(3);
+    document.getElementById('expected-cash-preview').innerText = expected.toFixed(3);
+    document.getElementById('difference-preview').innerText    = (diff >= 0 ? '+' : '') + diff.toFixed(3);
+    document.getElementById('difference-preview').style.color  = diff === 0 ? 'green' : diff > 0 ? '#0d6efd' : 'red';
+    document.getElementById('close-preview').style.display     = 'block';
+});
+
+document.getElementById('close-session-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!confirm('هل أنت متأكد من إغلاق الجلسة؟')) return;
+
+    fetch('/api/cash-session/close', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({
+            csrf_token  : CSRF_TOKEN,
+            actual_cash : document.getElementById('actual-cash').value,
+            notes       : document.getElementById('close-notes').value
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            const diff = d.difference;
+            alert(
+                `✅ تم إغلاق الجلسة بنجاح!\n` +
+                `النقدية المتوقعة : ${d.expected_cash.toFixed(3)}\n` +
+                `النقدية الفعلية  : ${d.actual_cash.toFixed(3)}\n` +
+                `الفرق            : ${(diff >= 0 ? '+' : '') + diff.toFixed(3)}`
+            );
+            location.reload();
+        } else {
+            alert(d.message || 'حدث خطأ');
+        }
+    });
+});
+{% endif %}
+</script>
+{% endblock %}

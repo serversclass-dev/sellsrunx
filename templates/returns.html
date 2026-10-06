@@ -1,0 +1,637 @@
+<!-- ==============================================================================
+     FILE: templates/returns.html - المرتجعات مع حماية العهدة والكميات المُرجَعة مسبقاً
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}المرتجعات{% endblock %}
+{% block page_title %}المرتجعات{% endblock %}
+
+{% block extra_css %}
+<style>
+    .returns-search-card {
+        position: relative; overflow: hidden; border-radius: var(--radius-lg);
+        background:
+            radial-gradient(120% 140% at 100% 0%, rgba(15,122,90,.10) 0%, rgba(15,122,90,0) 55%),
+            radial-gradient(90% 120% at 0% 100%, rgba(192,54,78,.08) 0%, rgba(192,54,78,0) 58%),
+            var(--surface);
+    }
+
+    .returns-search-head { display:flex; align-items:center; gap:13px; margin-bottom:16px; }
+    .returns-search-icon {
+        width:52px; height:52px; flex-shrink:0; border-radius:16px;
+        display:grid; place-items:center;
+        background:var(--brand-050); color:var(--brand); font-size:1.45rem;
+    }
+    .returns-search-head h6 { margin:0; font-weight:900; color:var(--ink); font-size:1.02rem; }
+    .returns-search-head p  { margin:1px 0 0; color:var(--muted); font-size:.84rem; }
+
+    .invoice-input-wrap { position:relative; }
+    .invoice-input-wrap i {
+        position:absolute; top:50%; right:16px; transform:translateY(-50%);
+        color:var(--muted); pointer-events:none; font-size:1.05rem;
+    }
+    .invoice-input-wrap .form-control {
+        padding-right:46px; min-height:50px; background:var(--surface-2);
+        direction:ltr; text-align:left; font-weight:800;
+        font-family:'Tajawal', ui-monospace, monospace;
+    }
+
+    .returns-hints { display:flex; flex-wrap:wrap; gap:8px; margin-top:13px; }
+    .hint-pill {
+        display:inline-flex; align-items:center; gap:6px;
+        border-radius:30px; background:var(--surface); border:1px solid var(--border);
+        color:var(--text-2); padding:5px 11px; font-size:.76rem; font-weight:800;
+        box-shadow:var(--shadow-xs);
+    }
+    .hint-pill i { color:var(--brand); }
+
+    .invoice-card { overflow:hidden; border-radius:var(--radius-lg); }
+    .invoice-card .card-header { justify-content:space-between; flex-wrap:wrap; gap:10px; }
+
+    .invoice-chip, .cashier-chip, .status-chip {
+        display:inline-flex; align-items:center; gap:7px;
+        border-radius:30px; padding:5px 12px; font-size:.78rem; font-weight:900;
+    }
+    .invoice-chip  { direction:ltr; background:var(--bg); border:1px solid var(--border); color:var(--ink); font-family:'Tajawal',ui-monospace,monospace; }
+    .cashier-chip  { background:var(--brand-050); color:var(--brand-700); }
+    .status-chip.completed { background:var(--success-050); color:var(--success); }
+    .status-chip.returned  { background:#fff7ed; color:#c2410c; }
+    .status-chip.cancelled { background:var(--warning-050); color:var(--warning); }
+    .status-chip::before   { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+
+    .items-table th, .items-table td { white-space:nowrap; }
+    .items-table th:nth-child(2), .items-table td:nth-child(2) { white-space:normal; min-width:160px; }
+
+    .item-cell   { display:flex; align-items:center; gap:10px; }
+    .item-avatar {
+        width:36px; height:36px; flex-shrink:0; border-radius:10px;
+        display:grid; place-items:center;
+        background:var(--brand-050); color:var(--brand); font-weight:900;
+    }
+    .item-title { font-weight:800; color:var(--ink); font-size:.9rem; }
+
+    .qty-pill {
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width:55px; border-radius:20px; background:var(--info-050); color:var(--info);
+        padding:3px 9px; font-size:.78rem; font-weight:900; direction:ltr;
+    }
+    .ret-pill {
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width:55px; border-radius:20px; background:#fff7ed; color:#c2410c;
+        padding:3px 9px; font-size:.78rem; font-weight:900; direction:ltr;
+    }
+    .remain-pill {
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width:55px; border-radius:20px; background:var(--success-050); color:var(--success);
+        padding:3px 9px; font-size:.78rem; font-weight:900; direction:ltr;
+    }
+    .remain-pill.zero { background:var(--bg); color:var(--muted); }
+
+    .money { direction:ltr; text-align:right; font-weight:900; color:var(--ink); font-family:'Tajawal',sans-serif; }
+
+    .return-qty-input {
+        width:90px; text-align:center; font-weight:900;
+        border-radius:10px; border:1.5px solid var(--border);
+        background:var(--surface-2); padding:4px 8px; direction:ltr;
+    }
+    .return-qty-input:disabled { opacity:.35; cursor:not-allowed; }
+    .return-qty-input:focus    { outline:none; border-color:var(--brand); background:#fff; }
+
+    .item-check { width:18px; height:18px; cursor:pointer; accent-color:var(--brand); }
+    tr.selected-row td { background:rgba(15,122,90,.05); }
+    tr.zero-remain td  { opacity:.45; pointer-events:none; }
+
+    .select-all-bar {
+        display:flex; align-items:center; gap:10px;
+        padding:10px 16px; background:var(--surface-2);
+        border-bottom:1px solid var(--border);
+        font-size:.84rem; font-weight:800; color:var(--text-2);
+    }
+
+    .invoice-total-box {
+        margin-top:4px; padding:18px; border-radius:18px;
+        background:linear-gradient(140deg, var(--brand), var(--brand-700));
+        color:#fff; display:flex; align-items:center;
+        justify-content:space-between; gap:14px;
+        box-shadow:0 10px 28px rgba(15,122,90,.24);
+    }
+    .invoice-total-box .label { display:flex; align-items:center; gap:7px; color:rgba(255,255,255,.78); font-weight:800; font-size:.9rem; }
+    .invoice-total-box .value { direction:ltr; font-size:1.9rem; font-weight:900; line-height:1; font-family:'Tajawal',sans-serif; }
+
+    /* تنبيه العهدة */
+    .session-warning {
+        display:flex; align-items:center; gap:13px;
+        padding:16px 18px; border-radius:var(--radius);
+        background:#fff7ed; border:1.5px solid #fed7aa;
+        margin-bottom:16px;
+    }
+    .session-warning .sw-icon {
+        width:44px; height:44px; flex-shrink:0; border-radius:12px;
+        display:grid; place-items:center;
+        background:#ffedd5; color:#ea580c; font-size:1.3rem;
+    }
+    .session-warning .sw-title { font-weight:900; color:#92400e; margin:0 0 2px; }
+    .session-warning .sw-sub   { font-size:.82rem; color:#b45309; margin:0; }
+
+    .return-panel {
+        margin-top:18px; padding:18px; border-radius:var(--radius);
+        border:1px solid #f0c8cf;
+        background:radial-gradient(100% 120% at 100% 0%, rgba(192,54,78,.08), transparent 58%), var(--danger-050);
+    }
+    .return-panel h6 { display:flex; align-items:center; gap:8px; margin:0 0 6px; color:var(--danger); font-weight:900; }
+    .return-panel p  { margin:0 0 13px; color:var(--text-2); font-size:.84rem; }
+
+    .return-summary-box {
+        background:var(--surface); border:1px solid var(--border);
+        border-radius:12px; padding:12px 16px; margin-bottom:14px; display:none;
+    }
+    .return-summary-box .rs-row { display:flex; justify-content:space-between; padding:3px 0; }
+    .return-summary-box .rs-label { color:var(--muted); font-weight:700; }
+    .return-summary-box .rs-val   { font-weight:900; color:var(--ink); }
+    .return-summary-box.visible   { display:block; }
+
+    /* بطاقة نجاح الإرجاع */
+    .success-return-card {
+        border:1.5px solid #10b981; border-radius:var(--radius);
+        background:#ecfdf5; padding:20px; margin-top:18px;
+    }
+    .success-return-card h6 { color:#065f46; font-weight:900; margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+    .success-return-card .ret-num {
+        display:inline-flex; align-items:center; gap:6px;
+        background:#d1fae5; border:1px solid #a7f3d0; color:#065f46;
+        border-radius:20px; padding:4px 12px; font-weight:900;
+        font-size:.85rem; direction:ltr; font-family:monospace;
+    }
+    .success-return-card .ret-refund {
+        font-size:1.5rem; font-weight:900; color:#059669;
+        direction:ltr; display:block; margin:6px 0;
+    }
+
+    /* فاتورة مُرجَعة كلياً */
+    .fully-returned-state {
+        text-align:center; padding:22px; border-radius:var(--radius);
+        background:#fff7ed; border:1px solid #fed7aa;
+        color:#92400e; font-weight:800;
+    }
+
+    .cancelled-state {
+        text-align:center; padding:22px; border-radius:var(--radius);
+        background:var(--warning-050); border:1px solid #ecd9a5;
+        color:var(--warning); font-weight:800;
+    }
+
+    /* شارة "مرتجع جزئياً" */
+    .partial-ret-banner {
+        display:flex; align-items:center; gap:10px;
+        padding:10px 14px; border-radius:10px;
+        background:#fff7ed; border:1px solid #fed7aa;
+        margin-bottom:12px; font-size:.84rem; color:#92400e; font-weight:800;
+    }
+    .partial-ret-banner i { color:#ea580c; font-size:1rem; }
+
+    @media (max-width:768px) {
+        .returns-search-card .btn, .return-panel .btn { width:100%; }
+        .invoice-total-box { flex-direction:column; align-items:flex-start; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h3><i class="bi bi-arrow-return-left" style="color:var(--brand)"></i> إدارة المرتجعات</h3>
+    <p class="mb-0">ابحث برقم الفاتورة واختر المنتجات التي تريد إرجاعها والكمية</p>
+</div>
+
+<div id="flash-area"></div>
+
+{% if message %}
+<div class="alert alert-success d-flex align-items-center gap-2">
+    <i class="bi bi-check-circle-fill"></i> <span>{{ message }}</span>
+</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-danger d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle-fill"></i> <span>{{ error }}</span>
+</div>
+{% endif %}
+
+<!-- تنبيه الكاشير إذا لم تكن له عهدة مفتوحة -->
+{% if session.role == 'cashier' %}
+<div class="session-warning" id="cashier-session-banner" style="display:none;">
+    <div class="sw-icon"><i class="bi bi-lock-fill"></i></div>
+    <div>
+        <p class="sw-title">العهدة مغلقة</p>
+        <p class="sw-sub">يجب فتح عهدة أولاً قبل معالجة المرتجعات.
+            <a href="{{ url_for('cash_session') }}" class="fw-bold">افتح عهدة الآن</a>
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<!-- بحث -->
+<div class="card returns-search-card mb-4">
+    <div class="card-body">
+        <div class="returns-search-head">
+            <div class="returns-search-icon"><i class="bi bi-search"></i></div>
+            <div>
+                <h6>البحث عن فاتورة</h6>
+                <p>أدخل رقم الفاتورة بالكامل ثم اختر المنتجات والكميات المراد إرجاعها</p>
+            </div>
+        </div>
+        <form method="GET" action="{{ url_for('returns') }}" class="row g-2">
+            <div class="col-md-9">
+                <div class="invoice-input-wrap">
+                    <i class="bi bi-receipt"></i>
+                    <input type="text" name="search" class="form-control form-control-lg"
+                           placeholder="INV-20260730-ABCD"
+                           value="{{ search_number }}" required autofocus>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary btn-lg w-100">
+                    <i class="bi bi-search me-1"></i> بحث
+                </button>
+            </div>
+        </form>
+        <div class="returns-hints">
+            <span class="hint-pill"><i class="bi bi-check2-square"></i> اختر منتجاً أو أكثر للإرجاع</span>
+            <span class="hint-pill"><i class="bi bi-box-arrow-in-down"></i> يعيد الكميات للمخزون فوراً</span>
+            <span class="hint-pill"><i class="bi bi-cash-stack"></i> يخصم من نقدية الجلسة تلقائياً</span>
+            <span class="hint-pill"><i class="bi bi-receipt-cutoff"></i> يعمل على الفواتير المكتملة فقط</span>
+            {% if session.role in ['admin', 'supervisor'] %}
+            <span class="hint-pill" style="background:var(--brand-050);border-color:var(--brand-100);">
+                <i class="bi bi-shield-check" style="color:var(--brand);"></i> المشرف يمكنه الإرجاع بدون عهدة مفتوحة
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if search_invoice %}
+<div class="card invoice-card">
+    <div class="card-header">
+        <span class="invoice-chip"><i class="bi bi-hash"></i>{{ search_invoice.invoice_number }}</span>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="cashier-chip"><i class="bi bi-person"></i> الكاشير: {{ search_invoice.cashier_name }}</span>
+            {% if search_invoice.status == 'completed' %}
+                {% if search_invoice.get('fully_returned') %}
+                <span class="status-chip returned">مُرجَعة كلياً</span>
+                {% elif search_invoice.get('has_return') %}
+                <span class="status-chip returned">مُرجَعة جزئياً</span>
+                {% else %}
+                <span class="status-chip completed">مكتملة</span>
+                {% endif %}
+            {% else %}
+            <span class="status-chip cancelled">ملغاة</span>
+            {% endif %}
+            <!-- رابط طباعة الفاتورة الأصلية — يفتح في نفس الـTab -->
+            <a href="{{ url_for('print_invoice', invoice_id=search_invoice.id) }}"
+               class="btn btn-sm btn-light">
+                <i class="bi bi-printer me-1"></i> طباعة الفاتورة
+            </a>
+        </div>
+    </div>
+
+    <div class="card-body">
+
+        {% if search_invoice.status == 'completed' and not search_invoice.get('fully_returned') %}
+        <!-- شارة إرجاع جزئي سابق -->
+        {% if search_invoice.get('has_return') %}
+        <div class="partial-ret-banner">
+            <i class="bi bi-info-circle-fill"></i>
+            تم إرجاع بعض أصناف هذه الفاتورة مسبقاً. الكميات المتبقية القابلة للإرجاع تظهر في العمود الأخير.
+        </div>
+        {% endif %}
+
+        <div class="select-all-bar">
+            <input type="checkbox" class="item-check" id="select-all" title="تحديد الكل">
+            <label for="select-all" style="cursor:pointer;">تحديد / إلغاء تحديد جميع الأصناف القابلة للإرجاع</label>
+            <span class="ms-auto text-muted" id="selected-count" style="font-size:.8rem;"></span>
+        </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle items-table mb-0" id="items-table">
+                <thead>
+                    <tr>
+                        {% if search_invoice.status == 'completed' and not search_invoice.get('fully_returned') %}
+                        <th style="width:40px;"></th>
+                        {% endif %}
+                        <th>المنتج</th>
+                        <th>الكمية المباعة</th>
+                        {% if search_invoice.get('has_return') %}
+                        <th>مُرجَع مسبقاً</th>
+                        <th>المتبقي</th>
+                        {% endif %}
+                        <th>السعر</th>
+                        <th>الإجمالي</th>
+                        {% if search_invoice.status == 'completed' and not search_invoice.get('fully_returned') %}
+                        <th>كمية الإرجاع</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in search_invoice.get('items', []) %}
+                {% set remaining = item.remaining_qty if item.remaining_qty is defined else item.quantity %}
+                <tr data-product-id="{{ item.product_id }}"
+                    data-max-qty="{{ remaining }}"
+                    data-unit-price="{{ item.unit_price }}"
+                    class="{% if remaining <= 0.001 %}zero-remain{% endif %}">
+
+                    {% if search_invoice.status == 'completed' and not search_invoice.get('fully_returned') %}
+                    <td>
+                        {% if remaining > 0.001 %}
+                        <input type="checkbox" class="item-check item-checkbox">
+                        {% else %}
+                        <i class="bi bi-check-circle-fill text-success" title="تم إرجاع الكمية كاملاً"></i>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+
+                    <td>
+                        <div class="item-cell">
+                            <div class="item-avatar">{{ item.product_name[:1] if item.product_name else '?' }}</div>
+                            <div class="item-title">{{ item.product_name }}</div>
+                        </div>
+                    </td>
+                    <td><span class="qty-pill">{{ "%.2f" % item.quantity }}</span></td>
+
+                    {% if search_invoice.get('has_return') %}
+                    <td>
+                        {% if item.already_returned > 0 %}
+                        <span class="ret-pill">{{ "%.2f" % item.already_returned }}</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="remain-pill {% if remaining <= 0.001 %}zero{% endif %}">
+                            {{ "%.2f" % remaining }}
+                        </span>
+                    </td>
+                    {% endif %}
+
+                    <td class="money">{{ "%.3f" % item.unit_price }}</td>
+                    <td class="money">{{ "%.3f" % item.total_price }}</td>
+
+                    {% if search_invoice.status == 'completed' and not search_invoice.get('fully_returned') %}
+                    <td>
+                        {% if remaining > 0.001 %}
+                        <input type="number" class="return-qty-input"
+                               value="{{ "%.2f" % remaining }}" min="0.01"
+                               max="{{ "%.2f" % remaining }}" step="0.01" disabled>
+                        {% else %}
+                        <span class="text-muted" style="font-size:.8rem;">لا يوجد</span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+                {% if not search_invoice.get('items') %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">لا توجد أصناف مسجلة لهذه الفاتورة</td>
+                </tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- إجمالي الفاتورة -->
+        <div class="invoice-total-box mt-3">
+            <div>
+                <div class="label"><i class="bi bi-wallet2"></i> صافي الفاتورة الأصلية</div>
+                {% if search_invoice.get('returned_amount') and search_invoice.returned_amount > 0 %}
+                <div style="font-size:.78rem;opacity:.8;margin-top:4px;">
+                    مُرجَع حتى الآن: {{ "%.3f" % search_invoice.returned_amount }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="value">{{ "%.3f" % search_invoice.net_amount }}</div>
+        </div>
+
+        <!-- حالات خاصة -->
+        {% if search_invoice.get('fully_returned') %}
+        <div class="fully-returned-state mt-3">
+            <i class="bi bi-check-circle-fill" style="font-size:1.4rem;color:#059669;display:block;margin-bottom:8px;"></i>
+            تم إرجاع جميع أصناف هذه الفاتورة بالكامل.
+            لا يمكن معالجة إرجاع إضافي عليها.
+        </div>
+
+        {% elif search_invoice.status == 'completed' %}
+        <!-- لوحة الإرجاع -->
+        <div class="return-panel mt-4" id="return-panel">
+            <h6><i class="bi bi-arrow-return-right"></i> تفاصيل الإرجاع</h6>
+            <p>حدد الأصناف التي يريد العميل إرجاعها وعدّل الكميات إن لزم، ثم اضغط "تنفيذ الإرجاع".</p>
+
+            <!-- ملخص -->
+            <div class="return-summary-box" id="return-summary">
+                <div class="rs-row">
+                    <span class="rs-label">عدد الأصناف المرتجعة:</span>
+                    <span class="rs-val" id="rs-items">0</span>
+                </div>
+                <div class="rs-row">
+                    <span class="rs-label">إجمالي قيمة المرتجع:</span>
+                    <span class="rs-val" id="rs-total">0.000</span>
+                </div>
+            </div>
+
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label fw-bold">سبب الإرجاع</label>
+                    <input type="text" id="return-reason" class="form-control"
+                           placeholder="مثال: منتج تالف، عميل غير راضٍ...">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-danger btn-lg w-100" id="do-return-btn"
+                            disabled onclick="submitPartialReturn()">
+                        <i class="bi bi-arrow-return-right me-1"></i> تنفيذ الإرجاع
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-2" style="font-size:.79rem;color:var(--muted);">
+                <i class="bi bi-info-circle"></i>
+                الفاتورة الأصلية تبقى محفوظة في النظام. يتم تسجيل المرتجع كحركة منفصلة مرتبطة بها.
+                {% if session.role == 'cashier' %}
+                المبلغ يُخصم من نقدية العهدة المفتوحة (للمدفوعات النقدية فقط).
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- بطاقة نجاح الإرجاع -->
+        <div class="success-return-card" id="success-card" style="display:none;">
+            <h6><i class="bi bi-check-circle-fill text-success"></i> تم تنفيذ الإرجاع بنجاح!</h6>
+            <div class="d-flex align-items-center gap-3 flex-wrap mb-2">
+                <span>رقم المرتجع:</span>
+                <span class="ret-num" id="ret-num-display">—</span>
+            </div>
+            <span class="ret-refund" id="ret-refund-display">0.000</span>
+            <div class="text-muted mb-3" style="font-size:.84rem;" id="ret-msg-display"></div>
+            <div class="d-flex gap-2 flex-wrap">
+                <!-- طباعة المرتجع في نفس الـTab -->
+                <a id="btn-print-return" href="#" class="btn btn-dark">
+                    <i class="bi bi-printer me-1"></i> طباعة إيصال المرتجع
+                </a>
+                <button class="btn btn-outline-secondary" onclick="location.href='{{ url_for('returns') }}'">
+                    <i class="bi bi-search me-1"></i> بحث عن فاتورة أخرى
+                </button>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="cancelled-state mt-3">
+            <i class="bi bi-info-circle"></i>
+            الفاتورة ملغاة ولا يمكن إرجاعها.
+        </div>
+        {% endif %}
+
+    </div><!-- /card-body -->
+</div><!-- /card -->
+
+<script>
+const INVOICE_ID = {{ search_invoice.id }};
+
+// ===== تحديد الكل =====
+const selectAllEl = document.getElementById('select-all');
+if (selectAllEl) {
+    selectAllEl.addEventListener('change', function() {
+        document.querySelectorAll('.item-checkbox').forEach(cb => {
+            if (!cb.disabled) {
+                cb.checked = this.checked;
+                toggleRow(cb);
+            }
+        });
+        updateSummary();
+    });
+}
+
+// ===== تحديد صف واحد =====
+document.querySelectorAll('.item-checkbox').forEach(cb => {
+    cb.addEventListener('change', function() {
+        toggleRow(this);
+        updateSummary();
+        syncSelectAll();
+    });
+});
+
+function toggleRow(cb) {
+    const row   = cb.closest('tr');
+    const input = row.querySelector('.return-qty-input');
+    if (!input) return;
+    input.disabled = !cb.checked;
+    row.classList.toggle('selected-row', cb.checked);
+    if (cb.checked && parseFloat(input.value) <= 0) {
+        input.value = input.max;
+    }
+}
+
+document.querySelectorAll('.return-qty-input').forEach(inp => {
+    inp.addEventListener('input', function() {
+        const max = parseFloat(this.max) || 0;
+        if (parseFloat(this.value) > max) this.value = max;
+        if (parseFloat(this.value) < 0)   this.value = 0;
+        updateSummary();
+    });
+});
+
+function updateSummary() {
+    let totalItems = 0, totalVal = 0;
+    document.querySelectorAll('#items-table tbody tr:not(.zero-remain)').forEach(row => {
+        const cb    = row.querySelector('.item-checkbox');
+        const input = row.querySelector('.return-qty-input');
+        const price = parseFloat(row.dataset.unitPrice) || 0;
+        if (cb && cb.checked && input) {
+            const qty = parseFloat(input.value) || 0;
+            if (qty > 0) { totalItems++; totalVal += qty * price; }
+        }
+    });
+    document.getElementById('rs-items').innerText = totalItems;
+    document.getElementById('rs-total').innerText  = totalVal.toFixed(3);
+    document.getElementById('return-summary').classList.toggle('visible', totalItems > 0);
+    document.getElementById('do-return-btn').disabled = (totalItems === 0);
+    if (document.getElementById('selected-count')) {
+        document.getElementById('selected-count').innerText = totalItems > 0 ? `${totalItems} صنف محدد` : '';
+    }
+}
+
+function syncSelectAll() {
+    if (!selectAllEl) return;
+    const all     = document.querySelectorAll('.item-checkbox');
+    const checked = document.querySelectorAll('.item-checkbox:checked');
+    selectAllEl.checked       = checked.length === all.length && all.length > 0;
+    selectAllEl.indeterminate = checked.length > 0 && checked.length < all.length;
+}
+
+function submitPartialReturn() {
+    const items = [];
+    document.querySelectorAll('#items-table tbody tr:not(.zero-remain)').forEach(row => {
+        const cb    = row.querySelector('.item-checkbox');
+        const input = row.querySelector('.return-qty-input');
+        if (cb && cb.checked && input) {
+            const qty = parseFloat(input.value);
+            if (qty > 0) {
+                items.push({
+                    product_id: parseInt(row.dataset.productId),
+                    quantity  : qty
+                });
+            }
+        }
+    });
+
+    if (!items.length) { alert('اختر صنفاً واحداً على الأقل'); return; }
+
+    const reason = document.getElementById('return-reason').value.trim() || 'مرتجع زبون';
+    const btn    = document.getElementById('do-return-btn');
+
+    if (!confirm(`هل تريد إرجاع ${items.length} صنف من الفاتورة؟`)) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري التنفيذ...';
+
+    fetch('/returns', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({
+            csrf_token: CSRF_TOKEN,
+            invoice_id: INVOICE_ID,
+            reason,
+            items
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-return-right me-1"></i> تنفيذ الإرجاع';
+
+        if (d.success) {
+            document.getElementById('return-panel').style.display = 'none';
+            const allBar = document.querySelector('.select-all-bar');
+            if (allBar) allBar.style.display = 'none';
+
+            const card = document.getElementById('success-card');
+            card.style.display = 'block';
+            card.scrollIntoView({ behavior: 'smooth' });
+
+            document.getElementById('ret-num-display').innerText    = d.return_number;
+            document.getElementById('ret-refund-display').innerText = d.total_refund.toFixed(3) + ' مُرجَع';
+            document.getElementById('ret-msg-display').innerText    = d.message;
+            // يفتح إيصال المرتجع في نفس الـTab
+            document.getElementById('btn-print-return').href = '/print_return/' + d.return_id;
+
+        } else {
+            if (d.require_session) {
+                const banner = document.getElementById('cashier-session-banner');
+                if (banner) { banner.style.display = 'flex'; banner.scrollIntoView({ behavior:'smooth' }); }
+            }
+            alert(d.message || 'حدث خطأ');
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-return-right me-1"></i> تنفيذ الإرجاع';
+        alert('تعذر الاتصال بالخادم');
+    });
+}
+</script>
+{% endif %}
+{% endblock %}

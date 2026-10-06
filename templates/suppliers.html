@@ -1,0 +1,488 @@
+<!-- ==============================================================================
+     FILE: templates/suppliers.html - إدارة الموردين (إعادة تصميم)
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}الموردون{% endblock %}
+{% block page_title %}الموردون{% endblock %}
+
+{% block extra_css %}
+<style>
+    .suppliers-card {
+        overflow: hidden;
+    }
+
+    .suppliers-card .card-header {
+        justify-content: space-between;
+    }
+
+    .suppliers-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 30px;
+        background: var(--brand-050);
+        color: var(--brand-700);
+        padding: 4px 11px;
+        font-size: .76rem;
+        font-weight: 800;
+    }
+
+    .supplier-cell {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        min-width: 220px;
+    }
+
+    .supplier-avatar {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        background: var(--gold-050);
+        color: var(--gold);
+        font-weight: 900;
+        font-size: .95rem;
+    }
+
+    .supplier-name {
+        color: var(--ink);
+        font-weight: 900;
+    }
+
+    .supplier-sub {
+        color: var(--muted);
+        font-size: .75rem;
+        margin-top: 1px;
+    }
+
+    .contact-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 20px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text-2);
+        padding: 4px 10px;
+        font-size: .78rem;
+        font-weight: 800;
+        max-width: 260px;
+    }
+
+    .contact-chip.phone {
+        direction: ltr;
+        text-align: left;
+        font-family: 'Tajawal', ui-monospace, monospace;
+    }
+
+    .contact-chip.email {
+        direction: ltr;
+        text-align: left;
+        font-family: 'Tajawal', ui-monospace, monospace;
+    }
+
+    .contact-chip.address {
+        direction: rtl;
+    }
+
+    .contact-chip i {
+        color: var(--brand);
+        flex-shrink: 0;
+    }
+
+    .contact-chip .clip {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .muted-pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 20px;
+        background: var(--bg);
+        color: var(--muted);
+        padding: 4px 10px;
+        font-size: .76rem;
+        font-weight: 700;
+    }
+
+    .row-actions {
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+    }
+
+    .icon-btn {
+        width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 10px;
+        color: var(--muted);
+        font-size: .95rem;
+        transition: all .15s ease;
+    }
+
+    .icon-btn:hover {
+        background: var(--brand-050);
+        color: var(--brand);
+        border-color: var(--brand-100);
+    }
+
+    .icon-btn.danger:hover {
+        background: var(--danger-050);
+        color: var(--danger);
+        border-color: #f0c8cf;
+    }
+
+    .suppliers-empty {
+        padding: 58px 20px;
+        text-align: center;
+        color: var(--muted);
+    }
+
+    .suppliers-empty .eico {
+        width: 66px;
+        height: 66px;
+        margin: 0 auto 14px;
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        background: var(--bg);
+        color: var(--muted);
+        font-size: 1.85rem;
+    }
+
+    .suppliers-empty h6 {
+        margin: 0;
+        color: var(--text-2);
+        font-weight: 800;
+    }
+
+    .suppliers-empty p {
+        margin: 4px 0 0;
+        font-size: .84rem;
+    }
+
+    .supplier-intro {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background:
+            radial-gradient(100% 120% at 100% 0%, rgba(181,138,52,.10), transparent 58%),
+            var(--surface-2);
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
+
+    .supplier-intro h6 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-weight: 900;
+        color: var(--ink);
+    }
+
+    .supplier-intro h6 i {
+        color: var(--gold);
+    }
+
+    .supplier-intro p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: .84rem;
+    }
+
+    .input-icon-wrap {
+        position: relative;
+    }
+
+    .input-icon-wrap > i {
+        position: absolute;
+        top: 50%;
+        right: 13px;
+        transform: translateY(-50%);
+        color: var(--muted);
+        pointer-events: none;
+        font-size: .98rem;
+    }
+
+    .input-icon-wrap .form-control {
+        padding-right: 40px;
+        background: var(--surface-2);
+    }
+
+    .input-icon-wrap .form-control:focus {
+        background: #fff;
+    }
+
+    .input-ltr {
+        direction: ltr;
+        text-align: left;
+    }
+
+    .form-hint {
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: .76rem;
+    }
+
+    @media (max-width: 768px) {
+        .page-header .btn {
+            width: 100%;
+        }
+
+        .suppliers-card table th,
+        .suppliers-card table td {
+            white-space: nowrap;
+        }
+
+        .supplier-cell {
+            min-width: 220px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <h3><i class="bi bi-truck" style="color:var(--brand)"></i> الموردون</h3>
+        <p class="mb-0">إدارة بيانات موردي المنتجات</p>
+    </div>
+
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#supModal" onclick="openCreateSup()">
+        <i class="bi bi-plus-circle me-1"></i> مورد جديد
+    </button>
+</div>
+
+<div class="card suppliers-card">
+    <div class="card-header">
+        <span><i class="bi bi-truck"></i> قائمة الموردين</span>
+        <span class="suppliers-count"><i class="bi bi-people"></i> {{ suppliers|length }} مورد</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>المورد</th>
+                    <th>الهاتف</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>العنوان</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for s in suppliers %}
+            <tr>
+                <td>
+                    <div class="supplier-cell">
+                        <div class="supplier-avatar">{{ s.name[:1] if s.name else '?' }}</div>
+                        <div>
+                            <div class="supplier-name">{{ s.name }}</div>
+                            <div class="supplier-sub">مورد منتجات</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    {% if s.phone %}
+                    <span class="contact-chip phone"><i class="bi bi-telephone"></i><span class="clip">{{ s.phone }}</span></span>
+                    {% else %}
+                    <span class="muted-pill">غير محدد</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if s.email %}
+                    <span class="contact-chip email"><i class="bi bi-envelope"></i><span class="clip">{{ s.email }}</span></span>
+                    {% else %}
+                    <span class="muted-pill">غير محدد</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if s.address %}
+                    <span class="contact-chip address"><i class="bi bi-geo-alt"></i><span class="clip">{{ s.address }}</span></span>
+                    {% else %}
+                    <span class="muted-pill">غير محدد</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="row-actions">
+                        <button class="icon-btn" title="تعديل" onclick='openEditSup({{ s|tojson }})'>
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="icon-btn danger" title="حذف" onclick="deleteSup({{ s.id }}, '{{ s.name|escape }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not suppliers %}
+            <tr>
+                <td colspan="5">
+                    <div class="suppliers-empty">
+                        <div class="eico"><i class="bi bi-truck"></i></div>
+                        <h6>لا يوجد موردون بعد</h6>
+                        <p>ابدأ بإضافة أول مورد من زر "مورد جديد"</p>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- مودال المورد -->
+<div class="modal fade" id="supModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="sup-form">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="supModalTitle">
+                        <i class="bi bi-truck" style="color:var(--brand)"></i> مورد جديد
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="s-id">
+
+                    <div class="supplier-intro">
+                        <h6><i class="bi bi-info-circle"></i> بيانات المورد</h6>
+                        <p>أضف بيانات التواصل الأساسية حتى يسهل الرجوع إليها عند تسجيل المشتريات.</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">الاسم *</label>
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-building"></i>
+                            <input type="text" class="form-control" id="s-name" placeholder="اسم المورد أو الشركة" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">الهاتف</label>
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-telephone"></i>
+                            <input type="text" class="form-control input-ltr" id="s-phone" placeholder="0910000000">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">البريد الإلكتروني</label>
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-envelope"></i>
+                            <input type="email" class="form-control input-ltr" id="s-email" placeholder="supplier@example.com">
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">العنوان</label>
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-geo-alt"></i>
+                            <input type="text" class="form-control" id="s-address" placeholder="عنوان المورد">
+                        </div>
+                        <div class="form-hint">كل الحقول عدا الاسم اختيارية ويمكن تعديلها لاحقاً.</div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i> حفظ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const supModal = new bootstrap.Modal(document.getElementById('supModal'));
+
+function openCreateSup() {
+    ['s-id', 's-name', 's-phone', 's-email', 's-address'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('supModalTitle').innerHTML = '<i class="bi bi-truck" style="color:var(--brand)"></i> مورد جديد';
+}
+
+function openEditSup(s) {
+    document.getElementById('s-id').value = s.id;
+    document.getElementById('s-name').value = s.name;
+    document.getElementById('s-phone').value = s.phone || '';
+    document.getElementById('s-email').value = s.email || '';
+    document.getElementById('s-address').value = s.address || '';
+    document.getElementById('supModalTitle').innerHTML = '<i class="bi bi-pencil-square" style="color:var(--brand)"></i> تعديل مورد';
+    supModal.show();
+}
+
+document.getElementById('sup-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('s-id').value;
+    const btn = e.target.querySelector('button[type=submit]');
+    const originalHtml = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري الحفظ...';
+
+    fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            csrf_token: CSRF_TOKEN,
+            action: id ? 'update' : 'add',
+            id: id,
+            name: document.getElementById('s-name').value,
+            phone: document.getElementById('s-phone').value,
+            email: document.getElementById('s-email').value,
+            address: document.getElementById('s-address').value
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
+        if (d.success) location.reload();
+        else alert(d.message || 'خطأ');
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        alert('تعذر الاتصال بالخادم');
+    });
+});
+
+function deleteSup(id, name) {
+    if (!confirm(`حذف المورد "${name}"؟`)) return;
+
+    fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            csrf_token: CSRF_TOKEN,
+            action: 'delete',
+            id: id
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) location.reload();
+        else alert(d.message || 'خطأ');
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,565 @@
+<!-- ==============================================================================
+     FILE: templates/print_invoice.html - مُصلَح نهائياً لطابعة XP-80C
+     ============================================================================== -->
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فاتورة رقم {{ invoice.invoice_number }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+
+        /* ===== PAGE: الطابعة الحرارية 80mm ===== */
+        @page {
+            size: 80mm auto;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        /* html وbody يكونون LTR حتى يبدأ المتصفح الرسم من اليسار الصحيح */
+        html, body {
+            direction: ltr;
+            margin: 0;
+            padding: 0;
+            width: 80mm;
+            background: #fff;
+            color: #000;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.45;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* ===== الـ RTL يبدأ هنا فقط داخل الفاتورة ===== */
+        .receipt {
+            direction: rtl;
+            width: 80mm;
+            padding: 4mm 3mm 6mm 3mm;
+        }
+
+        .text-center { text-align: center; }
+
+        .store-name {
+            margin: 0 0 3px;
+            font-size: 17px;
+            font-weight: 800;
+            line-height: 1.25;
+            text-align: center;
+        }
+
+        .store-meta {
+            margin: 0;
+            font-size: 11px;
+            line-height: 1.45;
+            text-align: center;
+        }
+
+        .receipt-title {
+            margin: 8px 0 2px;
+            font-size: 13px;
+            font-weight: 800;
+            text-align: center;
+        }
+
+        .invoice-number {
+            font-weight: 800;
+            direction: ltr;
+            unicode-bidi: embed;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .return-badge {
+            display: inline-block;
+            background: #fff7ed;
+            border: 1px dashed #ea580c;
+            border-radius: 6px;
+            color: #c2410c;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 8px;
+            margin-top: 4px;
+        }
+
+        .line {
+            border: none;
+            border-bottom: 1px dashed #000;
+            margin: 6px 0;
+            width: 100%;
+        }
+
+        .meta-grid {
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .meta-row, .total-row {
+            display: flex;
+            flex-direction: row-reverse;
+            align-items: baseline;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 3px;
+        }
+
+        .meta-row .label, .total-row .label {
+            white-space: nowrap;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .meta-row .value, .total-row .value {
+            font-weight: 600;
+            text-align: left;
+            direction: ltr;
+            unicode-bidi: embed;
+            word-break: break-all;
+        }
+
+        .meta-row.customer .value {
+            direction: rtl;
+            text-align: right;
+        }
+
+        /* ===== باركود ===== */
+        .barcode-section {
+            text-align: center;
+            margin: 8px 0 5px;
+            padding: 4px 0;
+            width: 100%;
+            overflow: hidden;
+            direction: ltr;
+        }
+
+        .barcode-section svg {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+        }
+
+        .barcode-number {
+            margin-top: 3px;
+            font-size: 9px;
+            direction: ltr;
+            unicode-bidi: embed;
+            letter-spacing: 0.5px;
+            color: #333;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: 4px;
+            direction: rtl;
+        }
+
+        th, td {
+            padding: 3px 2px;
+            vertical-align: top;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        th {
+            font-weight: 800;
+            border-bottom: 1px solid #000;
+            padding-bottom: 4px;
+        }
+
+        td.item-name, th.item-name {
+            width: 50%;
+            text-align: right;
+            word-break: break-word;
+        }
+
+        td.item-qty, th.item-qty {
+            width: 16%;
+            text-align: center;
+            direction: ltr;
+            unicode-bidi: embed;
+        }
+
+        td.item-total, th.item-total {
+            width: 34%;
+            text-align: left;
+            direction: ltr;
+            unicode-bidi: embed;
+        }
+
+        .totals {
+            width: 100%;
+        }
+
+        .grand-total {
+            margin-top: 4px;
+            padding: 5px 0;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .grand-total .value {
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .net-after-return {
+            margin-top: 4px;
+            padding: 4px 0;
+            border-top: 1px dashed #c2410c;
+            border-bottom: 1px dashed #c2410c;
+            color: #c2410c;
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .net-after-return .value {
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .return-notice {
+            background: #fff7ed;
+            border: 1px dashed #ea580c;
+            border-radius: 5px;
+            padding: 4px 6px;
+            margin: 4px 0;
+            font-size: 10px;
+            color: #c2410c;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .footer {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.55;
+        }
+
+        /* ===== أزرار الشاشة فقط ===== */
+        .screen-actions {
+            direction: rtl;
+            width: 80mm;
+            margin: 14px auto 8px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-print {
+            flex: 2;
+            padding: 11px;
+            background: #0f7a5a;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-print:hover { background: #0a5540; }
+
+        .btn-back {
+            flex: 1;
+            padding: 11px;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-back:hover { background: #e5e7eb; }
+
+        .return-link-bar {
+            direction: rtl;
+            width: 80mm;
+            margin: 0 auto 6px;
+            text-align: center;
+        }
+
+        .btn-return-invoice {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 10px;
+            color: #c2410c;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            text-decoration: none;
+        }
+
+        .btn-return-invoice:hover { background: #ffedd5; }
+
+        /* ===== شاشة فقط ===== */
+        @media screen {
+            body {
+                background: #f6f7f5;
+                padding: 18px 0;
+                width: 100%;
+            }
+            .receipt {
+                background: #fff;
+                box-shadow: 0 14px 40px rgba(0,0,0,.14);
+                margin: 0 auto;
+            }
+            .screen-actions {
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+
+        /* ===== طباعة - الإصلاح النهائي لـ XP-80C ===== */
+        @media print {
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
+
+            html {
+                width: 80mm;
+                margin: 0 !important;
+                padding: 0 !important;
+                direction: ltr !important;
+            }
+
+            body {
+                width: 80mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                direction: ltr !important;
+                background: #fff !important;
+            }
+
+            .receipt {
+                width: 80mm !important;
+                margin: 0 !important;
+                padding: 2mm 2mm 4mm 2mm !important;
+                box-shadow: none !important;
+            }
+
+            .screen-actions,
+            .return-link-bar {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- أزرار الشاشة -->
+    <div class="screen-actions">
+        <button class="btn-print" onclick="window.print()">
+            🖨️ طباعة الفاتورة
+        </button>
+        <button class="btn-back" onclick="history.back()">
+            رجوع ←
+        </button>
+    </div>
+
+    <!-- رابط إرجاع الفاتورة -->
+    {% if invoice.status == 'completed' %}
+    {% set already_returned = invoice.returned_amount if invoice.returned_amount else 0 %}
+    {% if not invoice.has_return or already_returned < invoice.net_amount %}
+    <div class="return-link-bar">
+        <a class="btn-return-invoice"
+           href="/returns?search={{ invoice.invoice_number }}">
+            ↩ إرجاع هذه الفاتورة
+        </a>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <main class="receipt">
+        <!-- الرأس -->
+        <header class="text-center">
+            <h3 class="store-name">{{ settings.store_name if settings else 'منظومة التاجر' }}</h3>
+
+            {% if settings and settings.address %}
+            <p class="store-meta">{{ settings.address }}</p>
+            {% endif %}
+
+            {% if settings and settings.phone %}
+            <p class="store-meta">هاتف: {{ settings.phone }}</p>
+            {% endif %}
+
+            <div class="receipt-title">فاتورة مبيعات</div>
+            <div class="invoice-number">#{{ invoice.invoice_number }}</div>
+
+            {% if invoice.has_return %}
+                {% set ret_amt = invoice.returned_amount if invoice.returned_amount else 0 %}
+                {% if ret_amt >= invoice.net_amount %}
+                <div class="return-badge">↩ مُرجَعة كلياً</div>
+                {% else %}
+                <div class="return-badge">↩ مُرجَعة جزئياً</div>
+                {% endif %}
+            {% endif %}
+        </header>
+
+        <div class="line"></div>
+
+        <section class="meta-grid">
+            <div class="meta-row">
+                <span class="label">التاريخ</span>
+                <span class="value">{{ invoice.created_at }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="label">الكاشير</span>
+                <span class="value">{{ invoice.cashier_name }}</span>
+            </div>
+            {% if invoice.customer_name and invoice.customer_name != 'زبون عام' %}
+            <div class="meta-row customer">
+                <span class="label">الزبون</span>
+                <span class="value">{{ invoice.customer_name }}</span>
+            </div>
+            {% endif %}
+            <div class="meta-row">
+                <span class="label">طريقة الدفع</span>
+                <span class="value">
+                    {% if invoice.payment_method == 'cash' %}نقداً
+                    {% elif invoice.payment_method == 'card' %}بطاقة
+                    {% else %}تحويل{% endif %}
+                </span>
+            </div>
+        </section>
+
+        <div class="line"></div>
+
+        <!-- ===== باركود CODE128 ===== -->
+        <div class="barcode-section">
+            <svg id="invoiceBarcode"></svg>
+            <div class="barcode-number">{{ invoice.invoice_number }}</div>
+        </div>
+
+        <div class="line"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th class="item-name">الصنف</th>
+                    <th class="item-qty">الكمية</th>
+                    <th class="item-total">الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="item-name">{{ item.name }}</td>
+                    <td class="item-qty">{{ "%.2f" % item.quantity }}</td>
+                    <td class="item-total">{{ "%.3f" % item.total_price }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="line"></div>
+
+        <section class="totals">
+            <div class="total-row">
+                <span class="label">الإجمالي</span>
+                <span class="value">{{ "%.3f" % invoice.total_amount }}</span>
+            </div>
+            {% if invoice.discount_amount and invoice.discount_amount > 0 %}
+            <div class="total-row">
+                <span class="label">الخصم</span>
+                <span class="value">{{ "%.3f" % invoice.discount_amount }}</span>
+            </div>
+            {% endif %}
+
+            <div class="total-row grand-total">
+                <span class="label">الصافي الأصلي</span>
+                <span class="value">{{ "%.3f" % invoice.net_amount }}</span>
+            </div>
+
+            <div class="total-row">
+                <span class="label">المدفوع</span>
+                <span class="value">{{ "%.3f" % invoice.paid_amount }}</span>
+            </div>
+            <div class="total-row">
+                <span class="label">الباقي للزبون</span>
+                <span class="value">{{ "%.3f" % invoice.change_amount }}</span>
+            </div>
+
+            {% if invoice.has_return %}
+            {% set ret_amt = invoice.returned_amount if invoice.returned_amount else 0 %}
+            {% if ret_amt > 0 %}
+            <div class="return-notice">
+                ⚠️ تم إرجاع جزء من هذه الفاتورة
+            </div>
+            <div class="total-row" style="color:#c2410c;">
+                <span class="label">↩ المرتجع</span>
+                <span class="value">− {{ "%.3f" % ret_amt }}</span>
+            </div>
+            <div class="total-row net-after-return">
+                <span class="label">الصافي بعد الرجوع</span>
+                <span class="value">{{ "%.3f" % (invoice.net_amount - ret_amt) }}</span>
+            </div>
+            {% endif %}
+            {% endif %}
+        </section>
+
+        <div class="line"></div>
+
+        <footer class="footer">
+            {{ settings.invoice_footer if settings else 'شكراً لزيارتكم!' }}
+        </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script>
+        try {
+            JsBarcode("#invoiceBarcode", "{{ invoice.invoice_number }}", {
+                format      : "CODE128",
+                width       : 1.6,
+                height      : 50,
+                displayValue: false,
+                margin      : 3,
+                background  : "#ffffff",
+                lineColor   : "#000000"
+            });
+        } catch(e) {
+            var bsec = document.querySelector('.barcode-section');
+            if (bsec) bsec.style.display = 'none';
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('auto') === '1') {
+            window.addEventListener('load', () => {
+                setTimeout(() => window.print(), 700);
+            });
+        }
+    </script>
+</body>
+</html>

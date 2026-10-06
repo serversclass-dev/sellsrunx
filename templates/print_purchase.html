@@ -1,0 +1,451 @@
+<!-- ==============================================================================
+     FILE: templates/print_purchase.html - طباعة فاتورة الشراء مع QR Code وزر رجوع
+     ============================================================================== -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فاتورة شراء {{ purchase.purchase_number }}</title>
+    <style>
+        @page { size: 80mm auto; margin: 0; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            color: #1a1a1a;
+            background: #f5f5f5;
+            direction: rtl;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* أزرار الشاشة */
+        .screen-actions {
+            width: 80mm;
+            margin: 14px auto 8px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-print {
+            flex: 2;
+            padding: 11px;
+            background: #0f7a5a;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-print:hover { background: #0a5540; }
+
+        .btn-back {
+            flex: 1;
+            padding: 11px;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .btn-back:hover { background: #e5e7eb; }
+
+        /* صفحة الفاتورة */
+        .page {
+            width: 80mm;
+            max-width: 80mm;
+            margin: 0 auto;
+            background: #fff;
+            padding: 14px 12px 20px;
+        }
+
+        /* الرأس */
+        .store-header {
+            text-align: center;
+            border-bottom: 2px dashed #ccc;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .store-name {
+            font-size: 17px;
+            font-weight: 900;
+            color: #111;
+            margin-bottom: 3px;
+        }
+
+        .store-sub {
+            font-size: 11px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* شارة الشراء */
+        .purchase-badge {
+            display: block;
+            text-align: center;
+            background: #eff6ff;
+            border: 1.5px dashed #3b82f6;
+            border-radius: 8px;
+            color: #1d4ed8;
+            font-size: 13px;
+            font-weight: 900;
+            padding: 6px 0;
+            margin: 8px 0;
+            letter-spacing: 1px;
+        }
+
+        /* رقم الفاتورة الكبير */
+        .purchase-number-display {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 900;
+            direction: ltr;
+            color: #1d4ed8;
+            margin-bottom: 4px;
+            letter-spacing: .5px;
+            font-family: monospace;
+        }
+
+        /* معلومات الفاتورة */
+        .info-grid { margin-bottom: 10px; }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 3px 0;
+            border-bottom: 1px dotted #eee;
+            font-size: 11.5px;
+        }
+
+        .info-row:last-child { border-bottom: none; }
+
+        .info-label {
+            color: #666;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+
+        .info-val {
+            font-weight: 800;
+            color: #111;
+            text-align: left;
+            direction: ltr;
+            word-break: break-word;
+        }
+
+        .info-val.rtl-val { direction: rtl; text-align: right; }
+
+        /* الفاصل */
+        .divider {
+            border-bottom: 1px dashed #ccc;
+            margin: 8px 0;
+        }
+
+        /* جدول الأصناف */
+        .section-title {
+            font-size: 10px;
+            font-weight: 900;
+            color: #444;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 4px;
+            margin: 10px 0 6px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            font-size: 10px;
+            color: #888;
+            font-weight: 800;
+            padding: 3px 2px;
+            border-bottom: 1px solid #eee;
+            text-align: right;
+        }
+
+        thead th.num-head { text-align: left; direction: ltr; }
+
+        tbody td {
+            padding: 5px 2px;
+            font-size: 11px;
+            border-bottom: 1px dotted #f0f0f0;
+            vertical-align: top;
+        }
+
+        tbody tr:last-child td { border-bottom: none; }
+
+        .product-name { font-weight: 800; color: #111; }
+        .product-bc   { font-size: 10px; color: #888; margin-top: 1px; font-family: monospace; direction: ltr; }
+
+        .qty-cell  { font-weight: 900; color: #1d4ed8; text-align: center; white-space: nowrap; }
+        .cost-cell { direction: ltr; text-align: left; font-weight: 700; color: #555; white-space: nowrap; }
+        .total-cell{ direction: ltr; text-align: left; font-weight: 900; white-space: nowrap; }
+
+        /* الإجمالي */
+        .totals-box {
+            margin-top: 10px;
+            border-top: 2px solid #111;
+            padding-top: 8px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 11.5px;
+        }
+
+        .total-row.grand {
+            font-size: 15px;
+            font-weight: 900;
+            border-top: 1px dashed #ccc;
+            margin-top: 6px;
+            padding-top: 6px;
+            color: #1d4ed8;
+        }
+
+        .total-row .t-label { color: #555; font-weight: 700; }
+        .total-row .t-val   { font-weight: 900; direction: ltr; }
+
+        /* QR Code */
+        .qr-section {
+            margin: 10px 0 6px;
+            text-align: center;
+        }
+
+        .qr-section canvas { display: block; margin: 0 auto; }
+
+        .qr-label {
+            font-size: 9px;
+            color: #888;
+            margin-top: 3px;
+            direction: ltr;
+            letter-spacing: .3px;
+            font-family: monospace;
+        }
+
+        /* التوقيع */
+        .signature-area {
+            margin-top: 16px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .sig-block { flex: 1; text-align: center; }
+
+        .sig-line {
+            border-top: 1px solid #aaa;
+            margin-bottom: 4px;
+            margin-top: 28px;
+        }
+
+        .sig-label { font-size: 10px; color: #888; font-weight: 700; }
+
+        /* التذييل */
+        .receipt-footer {
+            text-align: center;
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 2px dashed #ccc;
+            font-size: 10px;
+            color: #999;
+            line-height: 1.7;
+        }
+
+        @media screen {
+            body { background: #f5f5f5; padding: 0 0 20px; }
+            .page { box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+        }
+
+        @media print {
+            body { background: #fff; }
+            .screen-actions { display: none !important; }
+            .page { margin: 0; padding: 6px 8px 14px; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- أزرار الشاشة -->
+<div class="screen-actions">
+    <button class="btn-print" onclick="window.print()">
+        🖨️ طباعة الفاتورة
+    </button>
+    <a class="btn-back" href="/purchases">
+        ← رجوع للمشتريات
+    </a>
+</div>
+
+<div class="page">
+
+    <!-- رأس المتجر -->
+    <div class="store-header">
+        <div class="store-name">{{ settings.store_name or 'منظومة التاجر' }}</div>
+        {% if settings.phone %}
+        <div class="store-sub">📞 {{ settings.phone }}</div>
+        {% endif %}
+        {% if settings.address %}
+        <div class="store-sub">{{ settings.address }}</div>
+        {% endif %}
+    </div>
+
+    <!-- شارة الشراء ورقم الفاتورة -->
+    <span class="purchase-badge">🛒 فاتورة شراء</span>
+    <div class="purchase-number-display"># {{ purchase.purchase_number }}</div>
+
+    <!-- معلومات الفاتورة -->
+    <div class="info-grid">
+        <div class="info-row">
+            <span class="info-label">رقم الفاتورة:</span>
+            <span class="info-val">{{ purchase.purchase_number }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">التاريخ والوقت:</span>
+            <span class="info-val">{{ purchase.created_at }}</span>
+        </div>
+        {% if purchase.supplier_name %}
+        <div class="info-row">
+            <span class="info-label">المورد:</span>
+            <span class="info-val rtl-val">{{ purchase.supplier_name }}</span>
+        </div>
+        {% else %}
+        <div class="info-row">
+            <span class="info-label">المورد:</span>
+            <span class="info-val rtl-val" style="color:#aaa;">بدون مورد</span>
+        </div>
+        {% endif %}
+        {% if purchase.user_name %}
+        <div class="info-row">
+            <span class="info-label">بواسطة:</span>
+            <span class="info-val rtl-val">{{ purchase.user_name }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <span class="info-label">عدد الأصناف:</span>
+            <span class="info-val">{{ items|length }} صنف</span>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- جدول الأصناف -->
+    <div class="section-title">الأصناف المشتراة</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>الصنف</th>
+                <th style="text-align:center;">الكمية</th>
+                <th class="num-head">سعر الشراء</th>
+                <th class="num-head">الإجمالي</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+        <tr>
+            <td>
+                <div class="product-name">{{ item.product_name }}</div>
+                {% if item.barcode %}
+                <div class="product-bc">{{ item.barcode }}</div>
+                {% endif %}
+            </td>
+            <td class="qty-cell">{{ "%.2f" % item.quantity }}</td>
+            <td class="cost-cell">{{ "%.3f" % item.cost_price }}</td>
+            <td class="total-cell">{{ "%.3f" % item.total_price }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- الإجمالي -->
+    <div class="totals-box">
+        <div class="total-row">
+            <span class="t-label">عدد الأصناف:</span>
+            <span class="t-val">{{ items|length }}</span>
+        </div>
+        <div class="total-row">
+            <span class="t-label">إجمالي الكميات:</span>
+            <span class="t-val">
+                {{ "%.2f" % items|sum(attribute='quantity') }}
+            </span>
+        </div>
+        <div class="total-row grand">
+            <span class="t-label">إجمالي فاتورة الشراء:</span>
+            <span class="t-val">
+                {{ "%.3f" % purchase.total_amount }} {{ settings.currency or 'د.ل' }}
+            </span>
+        </div>
+    </div>
+
+    <!-- QR Code برقم فاتورة الشراء -->
+    <div class="qr-section">
+        <canvas id="purchase-qr"></canvas>
+        <div class="qr-label">{{ purchase.purchase_number }}</div>
+    </div>
+
+    <!-- التوقيع -->
+    <div class="signature-area">
+        <div class="sig-block">
+            <div class="sig-line"></div>
+            <div class="sig-label">توقيع المورد</div>
+        </div>
+        <div class="sig-block">
+            <div class="sig-line"></div>
+            <div class="sig-label">توقيع المستلم</div>
+        </div>
+    </div>
+
+    <!-- التذييل -->
+    <div class="receipt-footer">
+        {{ settings.invoice_footer or 'شكراً لتعاملكم معنا!' }}
+        <br>
+        تم إصدار هذه الفاتورة بتاريخ {{ purchase.created_at }}
+    </div>
+
+</div>
+
+<!-- مكتبة QR Code -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+    QRCode.toCanvas(
+        document.getElementById('purchase-qr'),
+        '{{ purchase.purchase_number }}',
+        { width: 80, margin: 1, color: { dark: '#000000', light: '#ffffff' } },
+        function(err) {
+            if (err) {
+                const c = document.getElementById('purchase-qr');
+                c.width = 0; c.height = 0;
+            }
+        }
+    );
+</script>
+
+</body>
+</html>

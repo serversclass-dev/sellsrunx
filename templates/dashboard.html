@@ -1,0 +1,940 @@
+<!-- ==============================================================================
+     FILE: templates/dashboard.html - لوحة التحكم مع نوافذ منبثقة وبحث بالباركود وزر تفاصيل
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}لوحة التحكم{% endblock %}
+{% block page_title %}لوحة التحكم{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rank-badge {
+        display:inline-flex; align-items:center; justify-content:center;
+        width:26px; height:26px; border-radius:8px;
+        background:var(--brand-050); color:var(--brand-700);
+        font-size:.75rem; font-weight:800; margin-left:10px;
+    }
+    .rank-badge.r1 { background:linear-gradient(140deg,#f6d98a,#d4a53c); color:#5a4310; }
+    .rank-badge.r2 { background:linear-gradient(140deg,#e4e7eb,#c3c9cf); color:#4a5057; }
+    .rank-badge.r3 { background:linear-gradient(140deg,#f0d0b0,#cf9a6a); color:#5a3a1e; }
+
+    .top-item {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:11px 0; border-bottom:1px dashed var(--border);
+    }
+    .top-item:last-child { border-bottom:0; }
+    .top-item .qty { font-weight:700; color:var(--brand-700); font-size:.9rem; white-space:nowrap; }
+
+    .status-badge {
+        padding:4px 12px; border-radius:20px; font-size:.74rem; font-weight:700;
+        display:inline-flex; align-items:center; gap:5px;
+    }
+    .status-badge.completed { background:var(--success-050); color:var(--success); }
+    .status-badge.completed::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--success); }
+    .status-badge.cancelled { background:var(--bg); color:var(--muted); }
+    .status-badge.cancelled::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--muted); }
+
+    .empty-state { text-align:center; padding:34px 0; color:var(--muted); }
+    .empty-state i { font-size:2rem; color:var(--success); display:block; margin-bottom:8px; }
+
+    .inv-num { font-family:'Tajawal',monospace; font-weight:700; color:var(--ink); }
+    .money   { font-weight:700; color:var(--ink); }
+
+    .card-link { font-size:.82rem; font-weight:600; color:var(--brand)!important; }
+    .card-link:hover { color:var(--brand-700)!important; }
+
+    /* بطاقة المرتجعات */
+    .stat-card.v-orange {
+        background: linear-gradient(135deg, #fff7ed, #ffedd5);
+        border: 1px solid #fed7aa;
+    }
+    .stat-card.v-orange .label { color: #92400e; }
+    .stat-card.v-orange h2     { color: #c2410c; }
+    .ico-orange { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+    .stat-card.v-orange::after { background: #ea580c; }
+
+    /* صافي اليوم */
+    .net-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        background: linear-gradient(135deg, var(--brand-050), #e0f2ec);
+        border: 1px solid var(--brand-100); border-radius: var(--radius);
+        padding: 14px 18px; margin-bottom: 20px;
+    }
+    .net-bar .nb-label { font-size: .86rem; font-weight: 800; color: var(--brand-700); }
+    .net-bar .nb-val   { font-size: 1.5rem; font-weight: 900; color: var(--brand); direction: ltr; }
+    .net-bar .nb-sub   { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+
+    /* تأثير النقر على البطاقات */
+    .stat-card { cursor: pointer; }
+    .stat-card .click-hint {
+        font-size:.7rem; color:var(--muted); margin-top:6px;
+        display:flex; align-items:center; gap:4px; opacity:.7;
+    }
+
+    /* مودال البطاقات */
+    .card-modal-header {
+        display:flex; align-items:center; gap:12px;
+    }
+    .card-modal-icon {
+        width:44px; height:44px; border-radius:12px;
+        display:grid; place-items:center; font-size:1.2rem; flex-shrink:0;
+    }
+    .card-modal-title { font-weight:900; font-size:1.05rem; margin:0; }
+    .card-modal-sub   { font-size:.8rem; color:var(--muted); margin:2px 0 0; }
+
+    .modal-stat-row {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:10px 14px; border-radius:10px; background:var(--surface-2);
+        border:1px solid var(--border); margin-bottom:8px;
+    }
+    .modal-stat-row .msr-label { font-size:.84rem; color:var(--text-2); font-weight:700; }
+    .modal-stat-row .msr-val   { font-weight:900; font-size:1rem; color:var(--ink); direction:ltr; }
+
+    .modal-stat-row.highlight { background:var(--brand-050); border-color:var(--brand-100); }
+    .modal-stat-row.highlight .msr-val { color:var(--brand); }
+    .modal-stat-row.danger-row { background:var(--danger-050); border-color:#f0c8cf; }
+    .modal-stat-row.danger-row .msr-val { color:var(--danger); }
+
+    .modal-table-wrap { max-height:320px; overflow-y:auto; border-radius:10px; border:1px solid var(--border); }
+    .modal-table-wrap table { margin:0; }
+
+    /* بحث الباركود في المودال */
+    .barcode-search-wrap {
+        position: relative; margin-bottom: 12px;
+    }
+    .barcode-search-wrap .bc-icon {
+        position:absolute; top:50%; right:12px; transform:translateY(-50%);
+        color:var(--muted); font-size:1rem; pointer-events:none;
+    }
+    .barcode-search-wrap input {
+        padding-right: 38px; padding-left: 12px;
+        border-radius: 10px; border: 1.5px solid var(--border);
+        background: var(--surface-2); font-size: .9rem; font-weight: 700;
+        direction: ltr; text-align: left; font-family: 'Courier New', monospace;
+        width: 100%; height: 42px; outline: none;
+        transition: border-color .2s;
+    }
+    .barcode-search-wrap input:focus { border-color: var(--brand); background:#fff; }
+    .barcode-search-hint {
+        font-size: .72rem; color: var(--muted); margin-top: 4px; margin-bottom: 8px;
+        display:flex; align-items:center; gap:5px;
+    }
+    .barcode-search-hint i { color:var(--brand); }
+
+    .pm-badge {
+        display:inline-flex; align-items:center; gap:4px;
+        border-radius:20px; padding:2px 9px; font-size:.72rem; font-weight:800;
+    }
+    .pm-cash     { background:#ecfdf5; color:#065f46; }
+    .pm-card     { background:#eff6ff; color:#1d4ed8; }
+    .pm-transfer { background:#f5f3ff; color:#5b21b6; }
+
+    .low-stock-badge {
+        display:inline-flex; align-items:center; gap:4px;
+        border-radius:20px; padding:2px 9px; font-size:.72rem; font-weight:800;
+        background:var(--danger-050); color:var(--danger);
+    }
+
+    /* زر تفاصيل */
+    .btn-details {
+        display:inline-flex; align-items:center; gap:4px;
+        padding:3px 9px; border-radius:8px; font-size:.72rem; font-weight:800;
+        background:var(--brand-050); color:var(--brand);
+        border:1px solid var(--brand-100); text-decoration:none;
+        white-space:nowrap; transition:background .15s;
+    }
+    .btn-details:hover { background:var(--brand-100); color:var(--brand-700); }
+
+    /* صافي بعد المرتجع في الجدول */
+    .net-returned {
+        font-size:.7rem; color:#c2410c; font-weight:700; display:block; margin-top:1px;
+    }
+
+    .skeleton {
+        background: linear-gradient(90deg, var(--border) 25%, var(--surface-2) 50%, var(--border) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.2s infinite;
+        border-radius:6px; height:16px; margin:4px 0;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-end gap-2">
+    <div>
+        <h3>أهلاً، {{ session.name }} 👋</h3>
+        <p>نظرة سريعة على أداء متجرك اليوم</p>
+    </div>
+    <a href="{{ url_for('pos') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> بيع جديد
+    </a>
+</div>
+
+<!-- صافي المبيعات الفعلي اليوم -->
+{% set net_today = today_sales.total_sales - (today_returns.total_refund if today_returns else 0) %}
+<div class="net-bar">
+    <div>
+        <div class="nb-label"><i class="bi bi-graph-up-arrow me-1"></i> صافي المبيعات الفعلي اليوم</div>
+        <div class="nb-sub">المبيعات − المرتجعات = الصافي</div>
+    </div>
+    <div class="nb-val">{{ "%.3f" % net_today }}</div>
+</div>
+
+<!-- ===== بطاقات الإحصائيات - قابلة للنقر ===== -->
+<div class="row g-3 mb-4">
+    <!-- مبيعات اليوم -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card v-brand" onclick="openCardModal('sales_today')"
+             title="انقر لعرض التفاصيل">
+            <div class="stat-top">
+                <div>
+                    <p class="label">مبيعات اليوم</p>
+                    <h2>{{ "%.3f" % today_sales.total_sales }}</h2>
+                </div>
+                <div class="stat-ico ico-brand"><i class="bi bi-cash-coin"></i></div>
+            </div>
+            <span class="trend up"><i class="bi bi-arrow-up-short"></i> اليوم</span>
+            <div class="click-hint"><i class="bi bi-eye"></i> انقر لعرض التفاصيل</div>
+        </div>
+    </div>
+
+    <!-- مرتجعات اليوم -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card v-orange" onclick="openCardModal('returns_today')"
+             title="انقر لعرض التفاصيل">
+            <div class="stat-top">
+                <div>
+                    <p class="label">مرتجعات اليوم</p>
+                    <h2>{{ "%.3f" % (today_returns.total_refund if today_returns else 0) }}</h2>
+                </div>
+                <div class="stat-ico ico-orange"><i class="bi bi-arrow-return-right"></i></div>
+            </div>
+            <span class="trend flat" style="color:#92400e;">
+                <i class="bi bi-receipt-cutoff"></i>
+                {{ today_returns.return_count if today_returns else 0 }} عملية إرجاع
+            </span>
+            <div class="click-hint"><i class="bi bi-eye"></i> انقر لعرض التفاصيل</div>
+        </div>
+    </div>
+
+    <!-- فواتير اليوم -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card v-info" onclick="openCardModal('invoices_today')"
+             title="انقر لعرض التفاصيل">
+            <div class="stat-top">
+                <div>
+                    <p class="label">عدد فواتير اليوم</p>
+                    <h2>{{ today_sales.total_invoices }}</h2>
+                </div>
+                <div class="stat-ico ico-info"><i class="bi bi-receipt"></i></div>
+            </div>
+            <span class="trend flat"><i class="bi bi-receipt-cutoff"></i> فاتورة</span>
+            <div class="click-hint"><i class="bi bi-eye"></i> انقر لعرض التفاصيل</div>
+        </div>
+    </div>
+
+    <!-- منتجات منخفضة المخزون -->
+    <div class="col-xl-3 col-md-6">
+        <div class="stat-card v-danger" onclick="openCardModal('low_stock')"
+             title="انقر لعرض التفاصيل">
+            <div class="stat-top">
+                <div>
+                    <p class="label">منتجات منخفضة المخزون</p>
+                    <h2>{{ low_stock|length }}</h2>
+                </div>
+                <div class="stat-ico ico-danger"><i class="bi bi-exclamation-triangle"></i></div>
+            </div>
+            {% if low_stock|length > 0 %}
+            <span class="trend down"><i class="bi bi-arrow-down-short"></i> يحتاج انتباه</span>
+            {% else %}
+            <span class="trend up"><i class="bi bi-check2"></i> جيد</span>
+            {% endif %}
+            <div class="click-hint"><i class="bi bi-eye"></i> انقر لعرض التفاصيل</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== المخطط + الأكثر مبيعاً ===== -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header justify-content-between">
+                <span><i class="bi bi-graph-up-arrow"></i> مبيعات آخر 7 أيام</span>
+                <a href="{{ url_for('reports') }}" class="card-link">التقارير التفصيلية</a>
+            </div>
+            <div class="card-body">
+                <div id="weekChart"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-trophy"></i> الأكثر مبيعاً (صافي)</div>
+            <div class="card-body py-2">
+                {% if top_products %}
+                    {% for p in top_products %}
+                    <div class="top-item">
+                        <div class="d-flex align-items-center">
+                            <span class="rank-badge r{{ loop.index }}">{{ loop.index }}</span>
+                            <span>{{ p.name }}</span>
+                        </div>
+                        <span class="qty">{{ "%.0f"|format(p.total_qty) }} وحدة</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-bar-chart-line"></i>
+                        لا توجد بيانات كافية بعد
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== المخزون المنخفض + آخر المبيعات ===== -->
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header justify-content-between">
+                <span><i class="bi bi-exclamation-diamond" style="color:var(--danger)"></i> تنبيهات المخزون المنخفض</span>
+                <a href="{{ url_for('products') }}" class="card-link">عرض الكل</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead><tr><th>المنتج</th><th>الكمية</th><th>الحد الأدنى</th></tr></thead>
+                    <tbody>
+                    {% if low_stock %}
+                        {% for p in low_stock[:6] %}
+                        <tr class="low-stock-row">
+                            <td>{{ p.name }}</td>
+                            <td><span class="badge" style="background:var(--danger-050);color:var(--danger);font-weight:700;">{{ p.quantity }}</span></td>
+                            <td class="text-muted">{{ p.min_quantity }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="3">
+                            <div class="empty-state"><i class="bi bi-check-circle"></i> لا توجد تنبيهات، المخزون بحالة جيدة</div>
+                        </td></tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header justify-content-between">
+                <span><i class="bi bi-clock-history"></i> آخر المبيعات</span>
+                <a href="{{ url_for('reports') }}" class="card-link">التقارير</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead><tr><th>رقم الفاتورة</th><th>الكاشير</th><th>الصافي</th><th>الحالة</th></tr></thead>
+                    <tbody>
+                    {% if recent_sales %}
+                        {% for s in recent_sales %}
+                        <tr>
+                            <td class="inv-num">
+                                <a href="{{ url_for('print_invoice', invoice_id=s.id) }}"
+                                   class="text-decoration-none" style="color:var(--brand);">
+                                    {{ s.invoice_number }}
+                                </a>
+                            </td>
+                            <td>{{ s.cashier_name }}</td>
+                            <td class="money">{{ "%.3f" % s.net_amount }}</td>
+                            <td>
+                                {% if s.status == 'completed' %}
+                                    {% if s.has_return %}
+                                    <span class="status-badge" style="background:#fff7ed;color:#c2410c;">
+                                        <span style="width:6px;height:6px;border-radius:50%;background:#c2410c;display:inline-block;"></span>
+                                        مُرجَعة
+                                    </span>
+                                    {% else %}
+                                    <span class="status-badge completed">مكتملة</span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="status-badge cancelled">ملغاة</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="4">
+                            <div class="empty-state"><i class="bi bi-inbox"></i> لا توجد مبيعات بعد</div>
+                        </td></tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================================================
+     النوافذ المنبثقة للبطاقات الأربع
+=================================================== -->
+
+<!-- مودال مبيعات اليوم -->
+<div class="modal fade" id="modalSalesToday" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="card-modal-header">
+                    <div class="card-modal-icon ico-brand"><i class="bi bi-cash-coin"></i></div>
+                    <div>
+                        <div class="card-modal-title">مبيعات اليوم</div>
+                        <div class="card-modal-sub">تفاصيل مبيعات يوم {{ now().strftime('%Y-%m-%d') }}</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close me-0 ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="body-sales_today">
+                <div class="skeleton mb-2" style="width:60%;height:20px;"></div>
+                <div class="skeleton mb-2" style="width:80%;height:16px;"></div>
+                <div class="skeleton" style="width:40%;height:16px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال مرتجعات اليوم -->
+<div class="modal fade" id="modalReturnsToday" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="card-modal-header">
+                    <div class="card-modal-icon ico-orange"><i class="bi bi-arrow-return-right"></i></div>
+                    <div>
+                        <div class="card-modal-title">مرتجعات اليوم</div>
+                        <div class="card-modal-sub">سجل عمليات الإرجاع اليوم</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close me-0 ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="body-returns_today">
+                <div class="skeleton mb-2" style="width:60%;height:20px;"></div>
+                <div class="skeleton mb-2" style="width:80%;height:16px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال فواتير اليوم - مع بحث بالباركود -->
+<div class="modal fade" id="modalInvoicesToday" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="card-modal-header">
+                    <div class="card-modal-icon ico-info"><i class="bi bi-receipt"></i></div>
+                    <div>
+                        <div class="card-modal-title">فواتير اليوم</div>
+                        <div class="card-modal-sub">ابحث برقم الفاتورة أو امسح الباركود مباشرة</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close me-0 ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="body-invoices_today">
+                <div class="skeleton mb-2" style="width:60%;height:20px;"></div>
+                <div class="skeleton" style="width:80%;height:16px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال المخزون -->
+<div class="modal fade" id="modalLowStock" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="card-modal-header">
+                    <div class="card-modal-icon ico-danger"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div>
+                        <div class="card-modal-title">تنبيهات المخزون</div>
+                        <div class="card-modal-sub">المنتجات التي وصلت للحد الأدنى</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close me-0 ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="body-low_stock">
+                <div class="skeleton mb-2" style="width:60%;height:20px;"></div>
+                <div class="skeleton" style="width:80%;height:16px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.1/dist/apexcharts.min.js"></script>
+<script>
+/* ===== مخطط الأسبوع ===== */
+const weekData = {{ week_data|tojson }};
+const options = {
+    chart: {
+        type: 'area', height: 300,
+        fontFamily: 'IBM Plex Sans Arabic, sans-serif',
+        toolbar: { show: false }, zoom: { enabled: false },
+        animations: { enabled: true, easing: 'easeinout', speed: 700 }
+    },
+    series: [{ name: 'المبيعات', data: weekData.map(r => Number(r.total)) }],
+    xaxis: {
+        categories: weekData.map(r => r.date),
+        labels: { style: { colors: '#8a94a1', fontSize: '12px' } },
+        axisBorder: { show: false }, axisTicks: { show: false }
+    },
+    yaxis: {
+        labels: {
+            style: { colors: '#8a94a1', fontSize: '12px' },
+            formatter: (v) => v >= 1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(0)
+        }
+    },
+    colors: ['#0f7a5a'],
+    fill: { type:'gradient', gradient:{ shadeIntensity:1, opacityFrom:.4, opacityTo:.05, stops:[0,90,100] } },
+    stroke: { curve: 'smooth', width: 3 },
+    dataLabels: { enabled: false },
+    grid: { borderColor:'#eceef0', strokeDashArray:4, xaxis:{ lines:{ show:false } } },
+    markers: { size:0, hover:{ size:6 } },
+    tooltip: { theme:'light', y:{ formatter:(v) => v.toFixed(3)+' د' } }
+};
+new ApexCharts(document.querySelector("#weekChart"), options).render();
+
+/* ===== خريطة المودالات ===== */
+const CARD_MODALS = {
+    sales_today   : 'modalSalesToday',
+    returns_today : 'modalReturnsToday',
+    invoices_today: 'modalInvoicesToday',
+    low_stock     : 'modalLowStock'
+};
+
+const loadedCards = {};
+
+function openCardModal(card) {
+    const modalId = CARD_MODALS[card];
+    if (!modalId) return;
+    const modal = new bootstrap.Modal(document.getElementById(modalId));
+    modal.show();
+
+    if (!loadedCards[card]) {
+        loadedCards[card] = true;
+        fetchCardData(card);
+    } else if (card === 'invoices_today') {
+        // عند إعادة فتح المودال، نعيد التركيز على البحث
+        setTimeout(() => {
+            const inp = document.getElementById('barcode-search-inp');
+            if (inp) inp.focus();
+        }, 400);
+    }
+}
+
+function fetchCardData(card) {
+    const bodyEl = document.getElementById('body-' + card);
+
+    fetch('/api/dashboard/card-data?card=' + card)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) {
+                bodyEl.innerHTML = `<div class="alert alert-danger">${d.message || 'حدث خطأ'}</div>`;
+                return;
+            }
+            bodyEl.innerHTML = renderCardBody(card, d);
+
+            // بعد الرسم — نربط حدث البحث بالباركود لكارت الفواتير
+            if (card === 'invoices_today') {
+                attachBarcodeSearch();
+            }
+        })
+        .catch(() => {
+            bodyEl.innerHTML = '<div class="alert alert-danger">تعذر الاتصال بالخادم</div>';
+        });
+}
+
+/* ===== ربط البحث بالباركود ===== */
+function attachBarcodeSearch() {
+    const inp = document.getElementById('barcode-search-inp');
+    if (!inp) return;
+
+    // تركيز تلقائي — قارئ الباركود يبدأ الكتابة فوراً
+    inp.focus();
+
+    let barcodeTimer;
+
+    inp.addEventListener('input', function () {
+        clearTimeout(barcodeTimer);
+        const q = this.value.trim().toLowerCase();
+
+        // قارئ الباركود يرسل بسرعة ثم Enter — نبدأ تصفية بعد 250ms توقف
+        barcodeTimer = setTimeout(() => filterInvoiceTable(q), 250);
+    });
+
+    inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(barcodeTimer);
+            filterInvoiceTable(this.value.trim().toLowerCase());
+        }
+        if (e.key === 'Escape') {
+            this.value = '';
+            filterInvoiceTable('');
+        }
+    });
+}
+
+function filterInvoiceTable(q) {
+    const rows = document.querySelectorAll('#inv-modal-tbody tr');
+    let found = 0;
+    rows.forEach(row => {
+        const invNum = (row.dataset.invNum || '').toLowerCase();
+        const match  = !q || invNum.includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) found++;
+    });
+
+    const noRes = document.getElementById('inv-no-results');
+    if (noRes) noRes.style.display = (found === 0 && q) ? '' : 'none';
+
+    const counter = document.getElementById('inv-search-counter');
+    if (counter) {
+        counter.textContent = q ? `${found} نتيجة` : '';
+    }
+}
+
+/* ===== مساعدات ===== */
+function fmt(n) { return Number(n || 0).toFixed(3); }
+
+function pmBadge(pm) {
+    if (pm === 'cash')     return '<span class="pm-badge pm-cash"><i class="bi bi-cash"></i> نقدي</span>';
+    if (pm === 'card')     return '<span class="pm-badge pm-card"><i class="bi bi-credit-card"></i> بطاقة</span>';
+    if (pm === 'transfer') return '<span class="pm-badge pm-transfer"><i class="bi bi-bank"></i> تحويل</span>';
+    return pm || '—';
+}
+
+function detailsBtn(invoiceId, invoiceNumber) {
+    if (!invoiceId) return '—';
+    return `<a href="/print_invoice/${invoiceId}" class="btn-details">
+        <i class="bi bi-eye"></i> تفاصيل
+    </a>`;
+}
+
+/* ===== بناء محتوى كل مودال ===== */
+function renderCardBody(card, d) {
+
+    /* ---------- مبيعات اليوم ---------- */
+    if (card === 'sales_today') {
+        const s = d.summary || {};
+        let html = `
+        <div class="modal-stat-row highlight mb-2">
+            <span class="msr-label"><i class="bi bi-cash-coin me-1"></i> إجمالي المبيعات</span>
+            <span class="msr-val">${fmt(s.total)}</span>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-4">
+                <div class="modal-stat-row flex-column align-items-start gap-1" style="min-height:64px;">
+                    <span class="msr-label">نقدي</span>
+                    <span class="msr-val" style="font-size:.95rem;">${fmt(s.cash_total)}</span>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="modal-stat-row flex-column align-items-start gap-1" style="min-height:64px;">
+                    <span class="msr-label">بطاقة</span>
+                    <span class="msr-val" style="font-size:.95rem;">${fmt(s.card_total)}</span>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="modal-stat-row flex-column align-items-start gap-1" style="min-height:64px;">
+                    <span class="msr-label">تحويل</span>
+                    <span class="msr-val" style="font-size:.95rem;">${fmt(s.transfer_total)}</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-table-wrap">
+        <table class="table table-hover table-sm align-middle mb-0">
+            <thead><tr>
+                <th>رقم الفاتورة</th>
+                <th>الزبون</th>
+                <th>الكاشير</th>
+                <th>الصافي الفعلي</th>
+                <th>الدفع</th>
+                <th></th>
+            </tr></thead>
+            <tbody>`;
+
+        if (d.rows && d.rows.length) {
+            d.rows.forEach(r => {
+                const retAmt    = Number(r.returned_amount || 0);
+                const netActual = Number(r.net_amount) - retAmt;
+                const netHtml   = r.has_return && retAmt > 0
+                    ? `<span style="font-weight:900;direction:ltr;">${fmt(netActual)}</span>
+                       <span class="net-returned">أصلي: ${fmt(r.net_amount)}</span>`
+                    : `<span style="font-weight:900;direction:ltr;">${fmt(r.net_amount)}</span>`;
+
+                html += `<tr>
+                    <td style="font-family:monospace;font-weight:800;font-size:.82rem;">
+                        <a href="/print_invoice/${r.id}" style="color:var(--brand);text-decoration:none;">
+                            ${r.invoice_number}
+                        </a>
+                    </td>
+                    <td style="font-size:.84rem;">${r.customer_name || '—'}</td>
+                    <td style="font-size:.84rem;">${r.cashier_name}</td>
+                    <td>${netHtml}</td>
+                    <td>${pmBadge(r.payment_method)}</td>
+                    <td>${detailsBtn(r.id, r.invoice_number)}</td>
+                </tr>`;
+            });
+        } else {
+            html += `<tr><td colspan="6" class="text-center text-muted py-3">لا توجد مبيعات اليوم</td></tr>`;
+        }
+        html += `</tbody></table></div>`;
+        return html;
+    }
+
+    /* ---------- مرتجعات اليوم ---------- */
+    if (card === 'returns_today') {
+        const s = d.summary || {};
+        let html = `
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <div class="modal-stat-row danger-row flex-column align-items-start gap-1">
+                    <span class="msr-label">إجمالي المرتجعات</span>
+                    <span class="msr-val">${fmt(s.total)}</span>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="modal-stat-row flex-column align-items-start gap-1">
+                    <span class="msr-label">عدد العمليات</span>
+                    <span class="msr-val">${s.count || 0} عملية</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-table-wrap">
+        <table class="table table-hover table-sm align-middle mb-0">
+            <thead><tr>
+                <th>رقم المرتجع</th>
+                <th>الفاتورة الأصلية</th>
+                <th>الكاشير</th>
+                <th>القيمة</th>
+                <th>النوع</th>
+            </tr></thead>
+            <tbody>`;
+
+        if (d.rows && d.rows.length) {
+            d.rows.forEach(r => {
+                const type = r.is_partial
+                    ? '<span style="background:#fff7ed;color:#c2410c;" class="pm-badge">جزئي</span>'
+                    : '<span style="background:#fef2f2;color:#b91c1c;" class="pm-badge">كلي</span>';
+                html += `<tr>
+                    <td style="font-family:monospace;font-weight:800;font-size:.8rem;">${r.return_number}</td>
+                    <td>
+                        <a href="/print_invoice/${r.invoice_id || ''}"
+                           style="font-family:monospace;font-size:.78rem;color:var(--brand);text-decoration:none;">
+                           ${r.invoice_number}
+                        </a>
+                    </td>
+                    <td style="font-size:.84rem;">${r.cashier_name}</td>
+                    <td style="font-weight:900;color:#b91c1c;direction:ltr;">${fmt(r.total_refund)}</td>
+                    <td>${type}</td>
+                </tr>`;
+            });
+        } else {
+            html += `<tr><td colspan="5" class="text-center text-muted py-3">لا توجد مرتجعات اليوم 🎉</td></tr>`;
+        }
+        html += `</tbody></table></div>`;
+        return html;
+    }
+
+    /* ---------- فواتير اليوم + بحث بالباركود ---------- */
+    if (card === 'invoices_today') {
+        const s = d.summary || {};
+        let html = `
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <div class="modal-stat-row highlight flex-column align-items-start gap-1">
+                    <span class="msr-label">إجمالي المبيعات</span>
+                    <span class="msr-val">${fmt(s.total)}</span>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="modal-stat-row flex-column align-items-start gap-1">
+                    <span class="msr-label">عدد الفواتير</span>
+                    <span class="msr-val">${s.count || 0} فاتورة</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- بحث بالباركود -->
+        <div class="barcode-search-wrap">
+            <i class="bi bi-upc-scan bc-icon"></i>
+            <input
+                type="text"
+                id="barcode-search-inp"
+                placeholder="امسح باركود الفاتورة أو اكتب رقمها..."
+                autocomplete="off"
+                spellcheck="false"
+            >
+        </div>
+        <div class="barcode-search-hint">
+            <i class="bi bi-info-circle"></i>
+            وجّه قارئ الباركود نحو الشاشة — ستظهر الفاتورة تلقائياً
+            <span id="inv-search-counter" style="margin-right:auto;font-weight:900;color:var(--brand);"></span>
+        </div>
+
+        <div class="modal-table-wrap">
+        <table class="table table-hover table-sm align-middle mb-0">
+            <thead><tr>
+                <th>رقم الفاتورة</th>
+                <th>الزبون</th>
+                <th>الكاشير</th>
+                <th>الصافي الفعلي</th>
+                <th>الدفع</th>
+                <th>الحالة</th>
+                <th>تفاصيل</th>
+            </tr></thead>
+            <tbody id="inv-modal-tbody">`;
+
+        if (d.rows && d.rows.length) {
+            d.rows.forEach(r => {
+                const retAmt    = Number(r.returned_amount || 0);
+                const netActual = Number(r.net_amount) - retAmt;
+
+                const netHtml = r.has_return && retAmt > 0
+                    ? `<span style="font-weight:900;direction:ltr;">${fmt(netActual)}</span>
+                       <span class="net-returned">أصلي: ${fmt(r.net_amount)}</span>`
+                    : `<span style="font-weight:900;direction:ltr;">${fmt(r.net_amount)}</span>`;
+
+                let statusHtml = '';
+                if (r.status === 'completed') {
+                    if (r.has_return) {
+                        statusHtml = '<span class="pm-badge" style="background:#fff7ed;color:#c2410c;">↩ مُرجَعة</span>';
+                    } else {
+                        statusHtml = '<span class="pm-badge" style="background:var(--success-050);color:var(--success);">✓ مكتملة</span>';
+                    }
+                } else {
+                    statusHtml = '<span class="pm-badge" style="background:var(--bg);color:var(--muted);">ملغاة</span>';
+                }
+
+                html += `<tr data-inv-num="${(r.invoice_number || '').toLowerCase()}">
+                    <td style="font-family:monospace;font-weight:800;font-size:.8rem;">
+                        <a href="/print_invoice/${r.id}"
+                           style="color:var(--brand);text-decoration:none;">
+                            ${r.invoice_number}
+                        </a>
+                    </td>
+                    <td style="font-size:.84rem;">${r.customer_name || '—'}</td>
+                    <td style="font-size:.84rem;">${r.cashier_name}</td>
+                    <td>${netHtml}</td>
+                    <td>${pmBadge(r.payment_method)}</td>
+                    <td>${statusHtml}</td>
+                    <td>${detailsBtn(r.id, r.invoice_number)}</td>
+                </tr>`;
+            });
+        } else {
+            html += `<tr id="inv-no-results" style="display:none;"><td colspan="7" class="text-center text-muted py-3">لا توجد نتائج</td></tr>
+                     <tr><td colspan="7" class="text-center text-muted py-3">لا توجد فواتير اليوم</td></tr>`;
+        }
+
+        html += `</tbody></table></div>`;
+
+        if (d.rows && d.rows.length) {
+            html += `<tr id="inv-no-results" style="display:none;"></tr>`;
+            // نضيف صف "لا نتائج" داخل tbody عبر الـ JS لاحقاً
+        }
+
+        return html;
+    }
+
+    /* ---------- المخزون المنخفض ---------- */
+    if (card === 'low_stock') {
+        let html = `
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <div class="modal-stat-row danger-row flex-column align-items-start gap-1">
+                    <span class="msr-label">منتجات منخفضة المخزون</span>
+                    <span class="msr-val">${d.rows ? d.rows.length : 0} منتج</span>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="modal-stat-row flex-column align-items-start gap-1">
+                    <span class="msr-label">إجمالي المنتجات النشطة</span>
+                    <span class="msr-val">${d.total_products || 0} منتج</span>
+                </div>
+            </div>
+        </div>`;
+
+        if (d.rows && d.rows.length) {
+            html += `<div class="modal-table-wrap">
+            <table class="table table-hover table-sm align-middle mb-0">
+                <thead><tr>
+                    <th>المنتج</th>
+                    <th>التصنيف</th>
+                    <th>الباركود</th>
+                    <th>الكمية</th>
+                    <th>الحد الأدنى</th>
+                </tr></thead>
+                <tbody>`;
+            d.rows.forEach(r => {
+                html += `<tr style="background:var(--warning-050);">
+                    <td style="font-weight:800;">${r.name}</td>
+                    <td style="font-size:.82rem;color:var(--muted);">${r.category_name || '—'}</td>
+                    <td style="font-family:monospace;font-size:.78rem;">${r.barcode || '—'}</td>
+                    <td><span class="low-stock-badge">${Number(r.quantity).toFixed(2)}</span></td>
+                    <td style="color:var(--muted);">${Number(r.min_quantity).toFixed(2)}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+        } else {
+            html += `<div class="empty-state" style="padding:30px;">
+                <i class="bi bi-check-circle-fill" style="color:var(--success);font-size:2.5rem;display:block;margin-bottom:10px;"></i>
+                <strong>المخزون بحالة ممتازة!</strong><br>
+                <small class="text-muted">لا توجد منتجات دون الحد الأدنى</small>
+            </div>`;
+        }
+
+        html += `<div class="mt-3 text-center">
+            <a href="/products" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-box-seam me-1"></i> إدارة المنتجات
+            </a>
+        </div>`;
+        return html;
+    }
+
+    return '<div class="alert alert-warning">نوع بطاقة غير معروف</div>';
+}
+
+/* ===== إضافة صف "لا نتائج" لـ invoices_today بعد الرسم ===== */
+function attachBarcodeSearch() {
+    const tbody = document.getElementById('inv-modal-tbody');
+    if (tbody && !document.getElementById('inv-no-results')) {
+        const noRow = document.createElement('tr');
+        noRow.id = 'inv-no-results';
+        noRow.style.display = 'none';
+        noRow.innerHTML = '<td colspan="7" class="text-center text-muted py-3"><i class="bi bi-search me-1"></i> لا توجد فاتورة بهذا الرقم</td>';
+        tbody.appendChild(noRow);
+    }
+
+    const inp = document.getElementById('barcode-search-inp');
+    if (!inp) return;
+
+    inp.focus();
+
+    let barcodeTimer;
+    inp.addEventListener('input', function () {
+        clearTimeout(barcodeTimer);
+        const q = this.value.trim().toLowerCase();
+        barcodeTimer = setTimeout(() => filterInvoiceTable(q), 250);
+    });
+    inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(barcodeTimer);
+            filterInvoiceTable(this.value.trim().toLowerCase());
+        }
+        if (e.key === 'Escape') {
+            this.value = '';
+            filterInvoiceTable('');
+        }
+    });
+}
+</script>
+{% endblock %}

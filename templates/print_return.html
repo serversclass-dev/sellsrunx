@@ -1,0 +1,453 @@
+<!-- ==============================================================================
+     FILE: templates/print_return.html - إيصال المرتجع مع QR Code وزر رجوع صحيح
+     ============================================================================== -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إيصال مرتجع {{ ret.return_number }}</title>
+    <style>
+        @page { size: 80mm auto; margin: 0; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            color: #1a1a1a;
+            background: #f5f5f5;
+            direction: rtl;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* أزرار الشاشة */
+        .screen-actions {
+            width: 80mm;
+            margin: 14px auto 8px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-print {
+            flex: 2;
+            padding: 11px;
+            background: #1f2937;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-print:hover { background: #111827; }
+
+        .btn-back {
+            flex: 1;
+            padding: 11px;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .btn-back:hover { background: #e5e7eb; }
+
+        /* صفحة الإيصال */
+        .page {
+            width: 80mm;
+            max-width: 80mm;
+            margin: 0 auto;
+            background: #fff;
+            padding: 14px 12px 20px;
+        }
+
+        /* الرأس */
+        .store-header {
+            text-align: center;
+            border-bottom: 2px dashed #ccc;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .store-name {
+            font-size: 17px;
+            font-weight: 900;
+            color: #111;
+            margin-bottom: 3px;
+        }
+
+        .store-sub {
+            font-size: 11px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* شارة المرتجع */
+        .return-badge {
+            display: block;
+            text-align: center;
+            background: #fef2f2;
+            border: 1.5px dashed #ef4444;
+            border-radius: 8px;
+            color: #b91c1c;
+            font-size: 13px;
+            font-weight: 900;
+            padding: 6px 0;
+            margin: 8px 0;
+            letter-spacing: 1px;
+        }
+
+        /* معلومات الإيصال */
+        .info-grid { margin-bottom: 10px; }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 3px 0;
+            border-bottom: 1px dotted #eee;
+            font-size: 11.5px;
+        }
+
+        .info-row:last-child { border-bottom: none; }
+
+        .info-label {
+            color: #666;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+
+        .info-val {
+            font-weight: 800;
+            color: #111;
+            text-align: left;
+            direction: ltr;
+        }
+
+        .info-val.rtl-val { direction: rtl; text-align: right; }
+
+        .return-type-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+        }
+
+        .pill-partial { background: #fff7ed; color: #c2410c; }
+        .pill-full    { background: #fef2f2; color: #b91c1c; }
+
+        /* جدول الأصناف */
+        .section-title {
+            font-size: 10px;
+            font-weight: 900;
+            color: #444;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 4px;
+            margin: 10px 0 6px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            font-size: 10px;
+            color: #888;
+            font-weight: 800;
+            padding: 3px 2px;
+            border-bottom: 1px solid #eee;
+            text-align: right;
+        }
+
+        thead th:last-child { text-align: left; direction: ltr; }
+
+        tbody td {
+            padding: 5px 2px;
+            font-size: 11px;
+            border-bottom: 1px dotted #f0f0f0;
+            vertical-align: top;
+        }
+
+        tbody tr:last-child td { border-bottom: none; }
+
+        .product-name { font-weight: 800; color: #111; }
+        .product-sub  { font-size: 10px; color: #888; margin-top: 1px; }
+        .qty-cell     { font-weight: 900; color: #1d4ed8; text-align: center; }
+        .num-cell     { direction: ltr; text-align: left; font-weight: 800; }
+
+        /* الإجمالي */
+        .totals-box {
+            margin-top: 10px;
+            border-top: 2px solid #111;
+            padding-top: 8px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 11.5px;
+        }
+
+        .total-row.grand {
+            font-size: 14px;
+            font-weight: 900;
+            border-top: 1px dashed #ccc;
+            margin-top: 6px;
+            padding-top: 6px;
+            color: #b91c1c;
+        }
+
+        .total-row .t-label { color: #555; font-weight: 700; }
+        .total-row .t-val   { font-weight: 900; direction: ltr; }
+
+        /* QR Code */
+        .qr-section {
+            margin: 10px 0 6px;
+            text-align: center;
+        }
+
+        .qr-section canvas { display: block; margin: 0 auto; }
+
+        .qr-label {
+            font-size: 9px;
+            color: #888;
+            margin-top: 3px;
+            direction: ltr;
+            letter-spacing: .3px;
+        }
+
+        /* سبب الإرجاع */
+        .reason-box {
+            margin-top: 10px;
+            padding: 7px 9px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 6px;
+            font-size: 11px;
+        }
+
+        .reason-label { font-weight: 900; color: #92400e; font-size: 10px; margin-bottom: 2px; }
+        .reason-text  { color: #78350f; }
+
+        /* التوقيع */
+        .signature-area {
+            margin-top: 16px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .sig-block { flex: 1; text-align: center; }
+
+        .sig-line {
+            border-top: 1px solid #aaa;
+            margin-bottom: 4px;
+            margin-top: 28px;
+        }
+
+        .sig-label { font-size: 10px; color: #888; font-weight: 700; }
+
+        /* التذييل */
+        .receipt-footer {
+            text-align: center;
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 2px dashed #ccc;
+            font-size: 10px;
+            color: #999;
+            line-height: 1.7;
+        }
+
+        @media screen {
+            body { background: #f5f5f5; padding: 0 0 20px; }
+            .page { box-shadow: 0 8px 28px rgba(0,0,0,.12); margin-top: 0; }
+        }
+
+        @media print {
+            body { background: #fff; }
+            .screen-actions { display: none !important; }
+            .page { margin: 0; padding: 6px 8px 14px; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- أزرار الشاشة -->
+<div class="screen-actions">
+    <button class="btn-print" onclick="window.print()">
+        🖨️ طباعة الإيصال
+    </button>
+    <a class="btn-back" href="/returns">
+        ← رجوع للمرتجعات
+    </a>
+</div>
+
+<div class="page">
+
+    <!-- رأس المتجر -->
+    <div class="store-header">
+        <div class="store-name">{{ settings.store_name or 'منظومة التاجر' }}</div>
+        {% if settings.phone %}
+        <div class="store-sub">📞 {{ settings.phone }}</div>
+        {% endif %}
+        {% if settings.address %}
+        <div class="store-sub">{{ settings.address }}</div>
+        {% endif %}
+    </div>
+
+    <!-- شارة المرتجع -->
+    <span class="return-badge">↩ إيصال مرتجع</span>
+
+    <!-- معلومات الإيصال -->
+    <div class="info-grid">
+        <div class="info-row">
+            <span class="info-label">رقم المرتجع:</span>
+            <span class="info-val">{{ ret.return_number }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">فاتورة أصلية:</span>
+            <span class="info-val">{{ ret.invoice_number }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">التاريخ والوقت:</span>
+            <span class="info-val">{{ ret.created_at }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">الكاشير:</span>
+            <span class="info-val rtl-val">{{ ret.cashier_name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">نوع الإرجاع:</span>
+            <span class="info-val">
+                {% if ret.is_partial %}
+                <span class="return-type-pill pill-partial">جزئي</span>
+                {% else %}
+                <span class="return-type-pill pill-full">كلي</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">طريقة الدفع:</span>
+            <span class="info-val rtl-val">
+                {% if ret.inv_payment == 'cash' %}نقداً
+                {% elif ret.inv_payment == 'card' %}بطاقة
+                {% else %}تحويل{% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- الأصناف المرتجعة -->
+    <div class="section-title">الأصناف المرتجعة</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>الصنف</th>
+                <th style="text-align:center;">الكمية</th>
+                <th style="text-align:left;direction:ltr;">الإجمالي</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+        <tr>
+            <td>
+                <div class="product-name">{{ item.product_name }}</div>
+                {% if item.barcode %}
+                <div class="product-sub">{{ item.barcode }}</div>
+                {% endif %}
+                <div class="product-sub">{{ "%.3f" % item.unit_price }} × {{ "%.2f" % item.quantity }}</div>
+            </td>
+            <td class="qty-cell">{{ "%.2f" % item.quantity }}</td>
+            <td class="num-cell">{{ "%.3f" % item.total_price }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- الإجمالي -->
+    <div class="totals-box">
+        <div class="total-row">
+            <span class="t-label">عدد الأصناف:</span>
+            <span class="t-val">{{ items|length }}</span>
+        </div>
+        <div class="total-row grand">
+            <span class="t-label">إجمالي المبلغ المُرجَع:</span>
+            <span class="t-val">{{ "%.3f" % ret.total_refund }} {{ settings.currency or 'د.ل' }}</span>
+        </div>
+    </div>
+
+    <!-- QR Code برقم المرتجع -->
+    <div class="qr-section">
+        <canvas id="return-qr"></canvas>
+        <div class="qr-label">{{ ret.return_number }}</div>
+    </div>
+
+    <!-- سبب الإرجاع -->
+    {% if ret.reason %}
+    <div class="reason-box">
+        <div class="reason-label">📝 سبب الإرجاع:</div>
+        <div class="reason-text">{{ ret.reason }}</div>
+    </div>
+    {% endif %}
+
+    <!-- التوقيع -->
+    <div class="signature-area">
+        <div class="sig-block">
+            <div class="sig-line"></div>
+            <div class="sig-label">توقيع العميل</div>
+        </div>
+        <div class="sig-block">
+            <div class="sig-line"></div>
+            <div class="sig-label">توقيع الكاشير</div>
+        </div>
+    </div>
+
+    <!-- التذييل -->
+    <div class="receipt-footer">
+        {{ settings.invoice_footer or 'شكراً لزيارتكم!' }}
+        <br>
+        تم إصدار هذا الإيصال بتاريخ {{ ret.created_at }}
+    </div>
+
+</div>
+
+<!-- مكتبة QR Code -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+    QRCode.toCanvas(
+        document.getElementById('return-qr'),
+        '{{ ret.return_number }}',
+        { width: 80, margin: 1, color: { dark: '#000000', light: '#ffffff' } },
+        function(err) {
+            if (err) {
+                const c = document.getElementById('return-qr');
+                c.width = 0; c.height = 0;
+            }
+        }
+    );
+</script>
+
+</body>
+</html>

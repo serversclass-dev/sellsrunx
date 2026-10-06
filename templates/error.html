@@ -1,0 +1,147 @@
+<!-- ==============================================================================
+     FILE: templates/error.html - صفحة الخطأ (إعادة تصميم)
+     ============================================================================== -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>خطأ · RUNX</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Tajawal:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand: #0f7a5a;
+            --brand-700: #0a5540;
+            --gold: #b58a34;
+            --danger: #c0364e;
+            --ink: #0f1720;
+            --text-2: #4a5765;
+            --bg: #f6f7f5;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'IBM Plex Sans Arabic', 'Tajawal', system-ui, sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+            background:
+                radial-gradient(circle at 100% 0%, rgba(15,122,90,.07) 0%, transparent 42%),
+                radial-gradient(circle at 0% 100%, rgba(181,138,52,.08) 0%, transparent 42%),
+                var(--bg);
+        }
+
+        .error-card {
+            text-align: center;
+            padding: 48px 42px;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 24px 60px rgba(16,23,32,.12), 0 6px 16px rgba(16,23,32,.06);
+            border: 1px solid #eceef0;
+            max-width: 480px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            animation: pop .4s cubic-bezier(.34,1.56,.64,1) both;
+        }
+        @keyframes pop {
+            from { opacity: 0; transform: translateY(14px) scale(.97); }
+            to   { opacity: 1; transform: none; }
+        }
+        .error-card::before {
+            content: "";
+            position: absolute;
+            top: 0; right: 0; left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--gold), var(--brand), var(--gold), transparent);
+        }
+
+        .error-icon {
+            width: 92px; height: 92px;
+            margin: 0 auto 22px;
+            border-radius: 26px;
+            display: grid; place-items: center;
+            font-size: 2.7rem;
+            color: var(--danger);
+            background: linear-gradient(140deg, #fbeaed, #f7dde2);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 8px 22px rgba(192,54,78,.18);
+        }
+        .error-icon i { animation: shake 2.4s ease-in-out infinite; }
+        @keyframes shake {
+            0%, 88%, 100% { transform: rotate(0); }
+            90% { transform: rotate(-8deg); }
+            94% { transform: rotate(7deg); }
+            98% { transform: rotate(-4deg); }
+        }
+
+        .error-card h3 {
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 800;
+            color: var(--ink);
+            margin: 0 0 10px;
+            font-size: 1.7rem;
+            letter-spacing: -.02em;
+        }
+        .error-card p {
+            color: var(--text-2);
+            font-size: .95rem;
+            line-height: 1.7;
+            margin: 0 auto 28px;
+            max-width: 40ch;
+        }
+
+        .btn-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--brand);
+            color: #fff;
+            border: 1px solid var(--brand);
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: .95rem;
+            padding: 11px 24px;
+            box-shadow: 0 4px 14px rgba(15,122,90,.3);
+            transition: all .18s ease;
+        }
+        .btn-home:hover {
+            background: var(--brand-700);
+            border-color: var(--brand-700);
+            box-shadow: 0 6px 18px rgba(15,122,90,.38);
+            transform: translateY(-2px);
+            color: #fff;
+        }
+        .btn-home:active { transform: translateY(0); }
+
+        .error-foot {
+            margin-top: 24px;
+            font-size: .78rem;
+            color: #8a94a1;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .error-foot i { color: var(--brand); }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="error-icon">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <h3>عذراً، حدث خطأ</h3>
+        <p>{{ message }}</p>
+        <a href="{{ url_for('pos') }}" class="btn-home">
+            <i class="bi bi-house-door"></i> العودة للرئيسية
+        </a>
+        <div class="error-foot">
+            <i class="bi bi-shop-window"></i> RUNX
+        </div>
+    </div>
+</body>
+</html>

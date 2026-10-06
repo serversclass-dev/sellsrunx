@@ -1,0 +1,813 @@
+<!-- ==============================================================================
+     FILE: templates/users.html - إدارة المستخدمين مع صلاحية المنتجات
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}المستخدمون{% endblock %}
+{% block page_title %}المستخدمون{% endblock %}
+
+{% block extra_css %}
+<style>
+    .users-card {
+        overflow: hidden;
+    }
+
+    .users-card .card-header {
+        justify-content: space-between;
+    }
+
+    .users-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 30px;
+        background: var(--brand-050);
+        color: var(--brand-700);
+        padding: 4px 11px;
+        font-size: .76rem;
+        font-weight: 800;
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        min-width: 220px;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        background: var(--brand-050);
+        color: var(--brand);
+        font-weight: 900;
+        font-size: .95rem;
+    }
+
+    .user-name {
+        color: var(--ink);
+        font-weight: 900;
+    }
+
+    .user-sub {
+        color: var(--muted);
+        font-size: .75rem;
+        margin-top: 1px;
+    }
+
+    .username-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        direction: ltr;
+        text-align: left;
+        border-radius: 20px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text-2);
+        padding: 4px 10px;
+        font-size: .78rem;
+        font-weight: 900;
+        font-family: 'Tajawal', ui-monospace, monospace;
+    }
+
+    .role-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 20px;
+        padding: 4px 11px;
+        font-weight: 900;
+        font-size: .74rem;
+    }
+
+    .role-pill.admin {
+        background: var(--brand-050);
+        color: var(--brand-700);
+    }
+
+    .role-pill.supervisor {
+        background: var(--gold-050);
+        color: var(--gold);
+    }
+
+    .role-pill.cashier {
+        background: var(--info-050);
+        color: var(--info);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 20px;
+        padding: 4px 10px;
+        font-weight: 800;
+        font-size: .74rem;
+    }
+
+    .status-badge::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+
+    .status-badge.active {
+        background: var(--success-050);
+        color: var(--success);
+    }
+
+    .status-badge.active::before {
+        background: var(--success);
+    }
+
+    .status-badge.inactive {
+        background: var(--bg);
+        color: var(--muted);
+    }
+
+    .status-badge.inactive::before {
+        background: var(--muted);
+    }
+
+    .perm-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border-radius: 20px;
+        padding: 3px 9px;
+        font-size: .72rem;
+        font-weight: 800;
+        margin-top: 3px;
+    }
+
+    .perm-badge.granted {
+        background: rgba(16,185,129,.1);
+        color: #047857;
+        border: 1px solid rgba(16,185,129,.2);
+    }
+
+    .perm-badge.denied {
+        background: var(--bg);
+        color: var(--muted);
+        border: 1px solid var(--border);
+    }
+
+    .date-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-2);
+        font-weight: 700;
+        font-size: .82rem;
+        white-space: nowrap;
+    }
+
+    .date-chip i {
+        color: var(--brand);
+    }
+
+    .row-actions {
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+    }
+
+    .icon-btn {
+        width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 10px;
+        color: var(--muted);
+        font-size: .95rem;
+        transition: all .15s ease;
+    }
+
+    .icon-btn:hover {
+        background: var(--brand-050);
+        color: var(--brand);
+        border-color: var(--brand-100);
+    }
+
+    .icon-btn.danger:hover {
+        background: var(--danger-050);
+        color: var(--danger);
+        border-color: #f0c8cf;
+    }
+
+    .self-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border-radius: 20px;
+        background: var(--brand-050);
+        color: var(--brand-700);
+        padding: 3px 9px;
+        font-size: .7rem;
+        font-weight: 900;
+        margin-top: 3px;
+    }
+
+    .users-empty {
+        padding: 58px 20px;
+        text-align: center;
+        color: var(--muted);
+    }
+
+    .users-empty .eico {
+        width: 66px;
+        height: 66px;
+        margin: 0 auto 14px;
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        background: var(--bg);
+        color: var(--muted);
+        font-size: 1.85rem;
+    }
+
+    .users-empty h6 {
+        margin: 0;
+        color: var(--text-2);
+        font-weight: 800;
+    }
+
+    .users-empty p {
+        margin: 4px 0 0;
+        font-size: .84rem;
+    }
+
+    .user-intro {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background:
+            radial-gradient(100% 120% at 100% 0%, rgba(15,122,90,.08), transparent 58%),
+            var(--surface-2);
+        padding: 14px 16px;
+        margin-bottom: 16px;
+    }
+
+    .user-intro h6 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-weight: 900;
+        color: var(--ink);
+    }
+
+    .user-intro h6 i {
+        color: var(--brand);
+    }
+
+    .user-intro p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: .84rem;
+    }
+
+    .input-icon-wrap {
+        position: relative;
+    }
+
+    .input-icon-wrap > i {
+        position: absolute;
+        top: 50%;
+        right: 13px;
+        transform: translateY(-50%);
+        color: var(--muted);
+        pointer-events: none;
+        font-size: .98rem;
+    }
+
+    .input-icon-wrap .form-control,
+    .input-icon-wrap .form-select {
+        padding-right: 40px;
+        background: var(--surface-2);
+    }
+
+    .input-icon-wrap .form-control:focus,
+    .input-icon-wrap .form-select:focus {
+        background: #fff;
+    }
+
+    .input-ltr {
+        direction: ltr;
+        text-align: left;
+    }
+
+    .form-hint {
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: .76rem;
+    }
+
+    .role-help {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .role-help-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        padding: 9px 10px;
+        border-radius: 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+    }
+
+    .role-help-item i {
+        color: var(--brand);
+        margin-top: 2px;
+    }
+
+    .role-help-item strong {
+        display: block;
+        color: var(--ink);
+        font-size: .8rem;
+    }
+
+    .role-help-item span {
+        display: block;
+        color: var(--muted);
+        font-size: .75rem;
+        margin-top: 1px;
+    }
+
+    .active-switch-card {
+        width: 100%;
+        min-height: 50px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface-2);
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+    }
+
+    .active-switch-card label {
+        font-weight: 900;
+        color: var(--text-2);
+    }
+
+    .active-switch-card .form-check-input {
+        width: 2.8em;
+        height: 1.45em;
+        cursor: pointer;
+    }
+
+    .active-switch-card .form-check-input:checked {
+        background-color: var(--brand);
+        border-color: var(--brand);
+    }
+
+    /* صلاحية المنتجات */
+    .perm-section {
+        border: 1px solid rgba(245,158,11,.3);
+        border-radius: var(--radius);
+        background: linear-gradient(135deg, rgba(245,158,11,.06), rgba(245,158,11,.02));
+        padding: 13px 15px;
+        display: none;
+    }
+
+    .perm-section.visible {
+        display: block;
+    }
+
+    .perm-section-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-weight: 900;
+        font-size: .84rem;
+        color: #92600a;
+        margin-bottom: 10px;
+    }
+
+    .perm-section-title i {
+        color: #d97706;
+    }
+
+    .perm-switch-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+    }
+
+    .perm-switch-row label {
+        font-weight: 800;
+        color: var(--text-2);
+        font-size: .88rem;
+    }
+
+    .perm-switch-row .form-check-input {
+        width: 2.8em;
+        height: 1.45em;
+        cursor: pointer;
+    }
+
+    .perm-switch-row .form-check-input:checked {
+        background-color: #d97706;
+        border-color: #d97706;
+    }
+
+    .perm-desc {
+        color: var(--muted);
+        font-size: .77rem;
+        margin-top: 6px;
+    }
+
+    @media (max-width: 768px) {
+        .page-header .btn {
+            width: 100%;
+        }
+
+        .users-card table th,
+        .users-card table td {
+            white-space: nowrap;
+        }
+
+        .user-cell {
+            min-width: 220px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <h3><i class="bi bi-people" style="color:var(--brand)"></i> المستخدمون</h3>
+        <p class="mb-0">إدارة حسابات الموظفين وصلاحياتهم</p>
+    </div>
+
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" onclick="openCreateUser()">
+        <i class="bi bi-person-plus me-1"></i> مستخدم جديد
+    </button>
+</div>
+
+<div class="card users-card">
+    <div class="card-header">
+        <span><i class="bi bi-people"></i> قائمة المستخدمين</span>
+        <span class="users-count"><i class="bi bi-person-check"></i> {{ users|length }} مستخدم</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>المستخدم</th>
+                    <th>اسم المستخدم</th>
+                    <th>الصلاحية</th>
+                    <th>صلاحية المنتجات</th>
+                    <th>الحالة</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for u in users %}
+            <tr>
+                <td>
+                    <div class="user-cell">
+                        <div class="user-avatar">{{ u.name[:1] if u.name else '?' }}</div>
+                        <div>
+                            <div class="user-name">{{ u.name }}</div>
+                            <div class="user-sub">
+                                موظف
+                                {% if u.id == session.user_id %}
+                                <span class="self-chip"><i class="bi bi-person-check"></i> أنت</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="username-chip"><i class="bi bi-at"></i>{{ u.username }}</span>
+                </td>
+                <td>
+                    <span class="role-pill {{ u.role }}">
+                        {% if u.role == 'admin' %}
+                        <i class="bi bi-shield-lock"></i> مدير
+                        {% elif u.role == 'supervisor' %}
+                        <i class="bi bi-shield-check"></i> مشرف
+                        {% else %}
+                        <i class="bi bi-cash-coin"></i> كاشير
+                        {% endif %}
+                    </span>
+                </td>
+                <td>
+                    {% if u.role == 'admin' %}
+                        <span class="perm-badge granted"><i class="bi bi-check-circle-fill"></i> كاملة</span>
+                    {% elif u.role == 'supervisor' %}
+                        {% if u.can_manage_products %}
+                        <span class="perm-badge granted"><i class="bi bi-check-circle-fill"></i> مفعّلة</span>
+                        {% else %}
+                        <span class="perm-badge denied"><i class="bi bi-eye"></i> عرض فقط</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="perm-badge denied"><i class="bi bi-dash-circle"></i> لا يوجد</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if u.is_active %}
+                    <span class="status-badge active">نشط</span>
+                    {% else %}
+                    <span class="status-badge inactive">معطّل</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="date-chip"><i class="bi bi-calendar3"></i>{{ u.created_at }}</span>
+                </td>
+                <td>
+                    <div class="row-actions">
+                        <button class="icon-btn" title="تعديل" onclick='openEditUser({{ u|tojson }})'>
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        {% if u.id != session.user_id %}
+                        <button class="icon-btn danger" title="حذف" onclick="deleteUser({{ u.id }}, '{{ u.name|escape }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+
+            {% if not users %}
+            <tr>
+                <td colspan="7">
+                    <div class="users-empty">
+                        <div class="eico"><i class="bi bi-people"></i></div>
+                        <h6>لا يوجد مستخدمون بعد</h6>
+                        <p>ابدأ بإضافة أول مستخدم من زر "مستخدم جديد"</p>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- مودال المستخدم -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="user-form">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="userModalTitle">
+                        <i class="bi bi-person-plus" style="color:var(--brand)"></i> مستخدم جديد
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="u-id">
+
+                    <div class="user-intro">
+                        <h6><i class="bi bi-info-circle"></i> بيانات المستخدم والصلاحيات</h6>
+                        <p>أنشئ حساباً للموظف وحدد صلاحياته داخل النظام. كلمة المرور مطلوبة عند إنشاء مستخدم جديد فقط.</p>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">الاسم الكامل *</label>
+                            <div class="input-icon-wrap">
+                                <i class="bi bi-person"></i>
+                                <input type="text" class="form-control" id="u-name" placeholder="اسم الموظف" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">اسم المستخدم *</label>
+                            <div class="input-icon-wrap">
+                                <i class="bi bi-at"></i>
+                                <input type="text" class="form-control input-ltr" id="u-username" placeholder="username" required>
+                            </div>
+                            <div class="form-hint">لا يمكن تغيير اسم المستخدم بعد إنشاء الحساب.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">كلمة المرور <span id="pass-hint" class="text-muted small"></span></label>
+                            <div class="input-icon-wrap">
+                                <i class="bi bi-lock"></i>
+                                <input type="password" class="form-control input-ltr" id="u-password" placeholder="••••••••">
+                            </div>
+                            <div class="form-hint">استخدم كلمة مرور يصعب تخمينها.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">الصلاحية</label>
+                            <div class="input-icon-wrap">
+                                <i class="bi bi-shield-check"></i>
+                                <select class="form-select" id="u-role" onchange="handleRoleChange(this.value)">
+                                    <option value="cashier">كاشير</option>
+                                    <option value="supervisor">مشرف</option>
+                                    <option value="admin">مدير</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="role-help">
+                                <div class="role-help-item">
+                                    <i class="bi bi-cash-coin"></i>
+                                    <div>
+                                        <strong>كاشير</strong>
+                                        <span>مناسب لنقطة البيع والعمليات اليومية المحدودة.</span>
+                                    </div>
+                                </div>
+                                <div class="role-help-item">
+                                    <i class="bi bi-shield-check"></i>
+                                    <div>
+                                        <strong>مشرف</strong>
+                                        <span>مناسب لمتابعة المنتجات والتقارير وإدارة العمليات. يمكن منحه صلاحية إدارة المنتجات.</span>
+                                    </div>
+                                </div>
+                                <div class="role-help-item">
+                                    <i class="bi bi-shield-lock"></i>
+                                    <div>
+                                        <strong>مدير</strong>
+                                        <span>يمتلك صلاحيات الإدارة الكاملة مثل المستخدمين والإعدادات والنسخ الاحتياطي.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- قسم صلاحية المنتجات — يظهر فقط عند اختيار مشرف -->
+                        <div class="col-12">
+                            <div class="perm-section" id="perm-products-section">
+                                <div class="perm-section-title">
+                                    <i class="bi bi-box-seam"></i> صلاحية إدارة المنتجات
+                                </div>
+                                <div class="perm-switch-row">
+                                    <label for="u-can-manage-products">
+                                        <i class="bi bi-box-seam" style="color:#d97706"></i>
+                                        السماح بإضافة وتعديل وحذف المنتجات
+                                    </label>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input" type="checkbox" id="u-can-manage-products">
+                                    </div>
+                                </div>
+                                <div class="perm-desc">
+                                    عند التفعيل، يستطيع المشرف إضافة منتجات جديدة وتعديل الأسعار والكميات وحذف المنتجات.
+                                    عند التعطيل، يمكنه عرض المنتجات فقط دون أي تعديل.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="active-switch-card">
+                                <label class="form-check-label" for="u-active">
+                                    <i class="bi bi-toggle-on" style="color:var(--brand)"></i> حساب نشط
+                                </label>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" id="u-active" checked>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i> حفظ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const userModal = new bootstrap.Modal(document.getElementById('userModal'));
+
+function handleRoleChange(role) {
+    const permSection = document.getElementById('perm-products-section');
+    if (role === 'supervisor') {
+        permSection.classList.add('visible');
+    } else {
+        permSection.classList.remove('visible');
+        document.getElementById('u-can-manage-products').checked = false;
+    }
+}
+
+function openCreateUser() {
+    document.getElementById('u-id').value = '';
+    document.getElementById('u-name').value = '';
+    document.getElementById('u-username').value = '';
+    document.getElementById('u-password').value = '';
+    document.getElementById('u-role').value = 'cashier';
+    document.getElementById('u-active').checked = true;
+    document.getElementById('u-can-manage-products').checked = false;
+    document.getElementById('u-username').disabled = false;
+    document.getElementById('u-password').required = true;
+    document.getElementById('pass-hint').innerText = '';
+    document.getElementById('userModalTitle').innerHTML = '<i class="bi bi-person-plus" style="color:var(--brand)"></i> مستخدم جديد';
+    handleRoleChange('cashier');
+}
+
+function openEditUser(u) {
+    document.getElementById('u-id').value = u.id;
+    document.getElementById('u-name').value = u.name;
+    document.getElementById('u-username').value = u.username;
+    document.getElementById('u-username').disabled = true;
+    document.getElementById('u-password').value = '';
+    document.getElementById('u-password').required = false;
+    document.getElementById('pass-hint').innerText = '(اتركها فارغة لعدم التغيير)';
+    document.getElementById('u-role').value = u.role;
+    document.getElementById('u-active').checked = !!u.is_active;
+    document.getElementById('u-can-manage-products').checked = !!u.can_manage_products;
+    document.getElementById('userModalTitle').innerHTML = '<i class="bi bi-pencil-square" style="color:var(--brand)"></i> تعديل مستخدم: ' + escapeHtml(u.name);
+    handleRoleChange(u.role);
+    userModal.show();
+}
+
+document.getElementById('user-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('u-id').value;
+    const btn = e.target.querySelector('button[type=submit]');
+    const originalHtml = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري الحفظ...';
+
+    const role = document.getElementById('u-role').value;
+    const canManageProducts = (role === 'supervisor')
+        ? document.getElementById('u-can-manage-products').checked
+        : false;
+
+    fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            csrf_token: CSRF_TOKEN,
+            action: id ? 'update' : 'add',
+            id: id,
+            name: document.getElementById('u-name').value,
+            username: document.getElementById('u-username').value,
+            password: document.getElementById('u-password').value,
+            role: role,
+            is_active: document.getElementById('u-active').checked ? 1 : 0,
+            can_manage_products: canManageProducts ? 1 : 0
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
+        if (d.success) location.reload();
+        else alert(d.message || 'خطأ');
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        alert('تعذر الاتصال بالخادم');
+    });
+});
+
+function deleteUser(id, name) {
+    if (!confirm(`حذف المستخدم "${name}"؟`)) return;
+
+    fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            csrf_token: CSRF_TOKEN,
+            action: 'delete',
+            id: id
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) location.reload();
+        else alert(d.message || 'خطأ');
+    });
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.innerText = str || '';
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,421 @@
+<!-- ==============================================================================
+     FILE: templates/categories.html - التصنيفات مع Modal لعرض منتجات كل تصنيف
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}التصنيفات{% endblock %}
+{% block page_title %}التصنيفات{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cat-card {
+        position: relative; overflow: hidden;
+        transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+        cursor: pointer;
+    }
+    .cat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+        border-color: var(--brand-100);
+    }
+    .cat-card::before {
+        content: ""; position: absolute;
+        top: 0; right: 0; bottom: 0; width: 3px;
+        background: var(--brand); opacity: 0;
+        transition: opacity .2s ease;
+    }
+    .cat-card:hover::before { opacity: 1; }
+
+    .cat-card .card-body {
+        padding: 18px;
+        display: flex; align-items: center;
+        justify-content: space-between; gap: 12px;
+    }
+
+    .cat-ico {
+        width: 46px; height: 46px; flex-shrink: 0;
+        border-radius: 13px; display: grid; place-items: center;
+        background: var(--brand-050); color: var(--brand);
+        font-size: 1.3rem;
+        transition: background .2s ease, color .2s ease;
+    }
+    .cat-card:hover .cat-ico { background: var(--brand); color: #fff; }
+
+    .cat-info { min-width: 0; flex: 1; }
+    .cat-info h6 {
+        font-weight: 700; margin: 0; font-size: 1rem; color: var(--ink);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .cat-count {
+        display: inline-flex; align-items: center; gap: 4px;
+        margin-top: 5px; padding: 2px 10px; border-radius: 20px;
+        background: var(--brand-050); color: var(--brand-700);
+        font-size: .74rem; font-weight: 700; cursor: pointer;
+        transition: background .15s;
+    }
+    .cat-count:hover { background: var(--brand-100); }
+    .cat-count i { font-size: .8rem; }
+
+    .cat-actions { display: flex; gap: 2px; flex-shrink: 0; }
+
+    .icon-btn {
+        width: 34px; height: 34px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: none; background: transparent; border-radius: 9px;
+        color: var(--muted); font-size: .95rem;
+        transition: all .15s ease;
+    }
+    .icon-btn:hover { background: var(--brand-050); color: var(--brand); }
+    .icon-btn.danger:hover { background: var(--danger-050); color: var(--danger); }
+
+    .cat-empty {
+        padding: 52px 0; text-align: center; color: var(--muted);
+    }
+    .cat-empty .eico {
+        width: 62px; height: 62px; margin: 0 auto 14px; border-radius: 16px;
+        display: grid; place-items: center;
+        background: var(--bg); color: var(--muted); font-size: 1.7rem;
+    }
+    .cat-empty p { margin: 0; font-size: .9rem; }
+
+    /* مودال منتجات التصنيف */
+    .cat-products-header {
+        display: flex; align-items: center; gap: 12px;
+    }
+    .cat-products-icon {
+        width: 44px; height: 44px; border-radius: 12px;
+        display: grid; place-items: center;
+        background: var(--brand-050); color: var(--brand); font-size: 1.2rem; flex-shrink: 0;
+    }
+    .cat-products-title { font-weight: 900; font-size: 1.05rem; margin: 0; }
+    .cat-products-sub   { font-size: .8rem; color: var(--muted); margin: 2px 0 0; }
+
+    .product-modal-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 11px 14px; border-bottom: 1px solid var(--border);
+        transition: background .12s ease;
+    }
+    .product-modal-item:last-child { border-bottom: none; }
+    .product-modal-item:hover      { background: var(--brand-050); }
+
+    .pm-avatar {
+        width: 38px; height: 38px; flex-shrink: 0; border-radius: 11px;
+        display: grid; place-items: center;
+        background: var(--brand-050); color: var(--brand); font-weight: 900; font-size: .95rem;
+    }
+
+    .pm-name  { font-weight: 800; color: var(--ink); font-size: .92rem; }
+    .pm-bc    { font-size: .74rem; color: var(--muted); font-family: monospace; margin-top: 2px; }
+
+    .pm-price {
+        margin-right: auto; text-align: left; direction: ltr;
+        font-weight: 900; color: var(--brand); font-family: 'Tajawal', sans-serif;
+        white-space: nowrap;
+    }
+
+    .pm-stock {
+        display: inline-flex; align-items: center; gap: 4px;
+        border-radius: 20px; padding: 2px 9px; font-size: .72rem; font-weight: 800;
+        white-space: nowrap;
+    }
+    .pm-stock.ok  { background: var(--success-050); color: var(--success); }
+    .pm-stock.low { background: var(--danger-050); color: var(--danger); }
+
+    .pm-empty {
+        text-align: center; padding: 34px 0; color: var(--muted);
+    }
+    .pm-empty i { font-size: 2rem; display: block; margin-bottom: 8px; color: var(--muted); }
+
+    .products-modal-wrap {
+        max-height: 420px; overflow-y: auto;
+        border: 1px solid var(--border); border-radius: var(--radius);
+    }
+
+    .skeleton {
+        background: linear-gradient(90deg, var(--border) 25%, var(--surface-2) 50%, var(--border) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.2s infinite;
+        border-radius: 6px;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <h3><i class="bi bi-tags" style="color:var(--brand)"></i> التصنيفات</h3>
+        <p class="mb-0">تنظيم المنتجات ضمن تصنيفات — انقر على أي تصنيف لعرض منتجاته</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#catModal"
+            onclick="openCreateCat()">
+        <i class="bi bi-plus-circle me-1"></i> تصنيف جديد
+    </button>
+</div>
+
+<div class="row g-3">
+    {% for c in categories %}
+    <div class="col-lg-4 col-md-6 col-12">
+        <div class="card cat-card" onclick="openProductsModal({{ c.id }}, '{{ c.name|escape }}')">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3" style="min-width:0;">
+                    <span class="cat-ico"><i class="bi bi-tag-fill"></i></span>
+                    <div class="cat-info">
+                        <h6>{{ c.name }}</h6>
+                        <span class="cat-count">
+                            <i class="bi bi-box-seam"></i> {{ c.products_count }} منتج
+                            <i class="bi bi-eye ms-1" style="opacity:.6;"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="cat-actions" onclick="event.stopPropagation()">
+                    <button class="icon-btn" title="تعديل"
+                            onclick='openEditCat({{ c|tojson }})'>
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="icon-btn danger" title="حذف"
+                            onclick="deleteCat({{ c.id }}, '{{ c.name|escape }}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not categories %}
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body cat-empty">
+                <div class="eico"><i class="bi bi-tags"></i></div>
+                <p>لا توجد تصنيفات بعد</p>
+                <p class="mt-1" style="font-size:.82rem;">ابدأ بإضافة أول تصنيف من الزر بالأعلى</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ===== مودال إضافة / تعديل التصنيف ===== -->
+<div class="modal fade" id="catModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="cat-form">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="catModalTitle">
+                        <i class="bi bi-tag" style="color:var(--brand)"></i> تصنيف جديد
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="c-id">
+                    <label class="form-label">اسم التصنيف *</label>
+                    <input type="text" class="form-control" id="c-name"
+                           placeholder="مثال: مشروبات، مواد غذائية..." required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> حفظ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== مودال منتجات التصنيف ===== -->
+<div class="modal fade" id="productsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="cat-products-header">
+                    <div class="cat-products-icon"><i class="bi bi-tag-fill"></i></div>
+                    <div>
+                        <div class="cat-products-title" id="pm-cat-name">—</div>
+                        <div class="cat-products-sub" id="pm-cat-count">جاري التحميل...</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close me-0 ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="pm-body">
+                    <!-- skeleton -->
+                    <div style="padding:16px;">
+                        <div class="skeleton mb-3" style="height:52px;border-radius:12px;"></div>
+                        <div class="skeleton mb-3" style="height:52px;border-radius:12px;"></div>
+                        <div class="skeleton" style="height:52px;border-radius:12px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <a id="pm-manage-link" href="/products" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-box-seam me-1"></i> إدارة المنتجات
+                </a>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const catModal      = new bootstrap.Modal(document.getElementById('catModal'));
+const productsModal = new bootstrap.Modal(document.getElementById('productsModal'));
+
+/* ===== إنشاء تصنيف ===== */
+function openCreateCat() {
+    document.getElementById('c-id').value   = '';
+    document.getElementById('c-name').value = '';
+    document.getElementById('catModalTitle').innerHTML =
+        '<i class="bi bi-tag" style="color:var(--brand)"></i> تصنيف جديد';
+}
+
+/* ===== تعديل تصنيف ===== */
+function openEditCat(c) {
+    document.getElementById('c-id').value   = c.id;
+    document.getElementById('c-name').value = c.name;
+    document.getElementById('catModalTitle').innerHTML =
+        '<i class="bi bi-pencil-square" style="color:var(--brand)"></i> تعديل تصنيف';
+    catModal.show();
+}
+
+/* ===== حفظ التصنيف ===== */
+document.getElementById('cat-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id  = document.getElementById('c-id').value;
+    const btn = e.target.querySelector('button[type="submit"]');
+    const orig = btn.innerHTML;
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    fetch('/api/categories', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({
+            csrf_token: CSRF_TOKEN,
+            action    : id ? 'update' : 'add',
+            id,
+            name: document.getElementById('c-name').value
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        btn.disabled  = false;
+        btn.innerHTML = orig;
+        if (d.success) location.reload();
+        else alert(d.message || 'خطأ');
+    })
+    .catch(() => {
+        btn.disabled  = false;
+        btn.innerHTML = orig;
+        alert('تعذر الاتصال بالخادم');
+    });
+});
+
+/* ===== حذف تصنيف ===== */
+function deleteCat(id, name) {
+    if (!confirm(`حذف التصنيف "${name}"؟`)) return;
+    fetch('/api/categories', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ csrf_token: CSRF_TOKEN, action: 'delete', id })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) location.reload();
+        else alert(d.message || 'خطأ');
+    })
+    .catch(() => alert('تعذر الاتصال بالخادم'));
+}
+
+/* ===== عرض منتجات التصنيف ===== */
+const loadedCategories = {};
+
+function openProductsModal(catId, catName) {
+    document.getElementById('pm-cat-name').innerText  = catName;
+    document.getElementById('pm-cat-count').innerText = 'جاري التحميل...';
+    document.getElementById('pm-body').innerHTML = `
+        <div style="padding:16px;">
+            <div class="skeleton mb-3" style="height:52px;border-radius:12px;"></div>
+            <div class="skeleton mb-3" style="height:52px;border-radius:12px;"></div>
+            <div class="skeleton"      style="height:52px;border-radius:12px;"></div>
+        </div>`;
+    productsModal.show();
+
+    if (loadedCategories[catId]) {
+        renderProducts(loadedCategories[catId], catName);
+        return;
+    }
+
+    fetch(`/api/category-products?id=${catId}`)
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                loadedCategories[catId] = d.products;
+                renderProducts(d.products, catName);
+            } else {
+                document.getElementById('pm-body').innerHTML =
+                    `<div class="alert alert-danger m-3">${d.message || 'حدث خطأ'}</div>`;
+            }
+        })
+        .catch(() => {
+            document.getElementById('pm-body').innerHTML =
+                '<div class="alert alert-danger m-3">تعذر الاتصال بالخادم</div>';
+        });
+}
+
+function renderProducts(products, catName) {
+    const count = products.length;
+    document.getElementById('pm-cat-count').innerText =
+        count > 0 ? `${count} منتج في هذا التصنيف` : 'لا توجد منتجات في هذا التصنيف';
+
+    if (!count) {
+        document.getElementById('pm-body').innerHTML = `
+            <div class="pm-empty">
+                <i class="bi bi-box-seam"></i>
+                لا توجد منتجات في تصنيف "${catName}" بعد
+            </div>`;
+        return;
+    }
+
+    let html = '<div class="products-modal-wrap">';
+    products.forEach(p => {
+        const qty     = parseFloat(p.quantity || 0);
+        const minQty  = parseFloat(p.min_quantity || 5);
+        const isLow   = qty <= minQty;
+        const stockCls = isLow ? 'low' : 'ok';
+        const stockIco = isLow ? 'bi-exclamation-triangle' : 'bi-check-circle';
+        const barcode  = p.barcode
+            ? `<div class="pm-bc">${p.barcode}</div>`
+            : '';
+
+        html += `
+        <div class="product-modal-item">
+            <div class="pm-avatar">${(p.name || '?').charAt(0)}</div>
+            <div style="min-width:0;flex:1;">
+                <div class="pm-name">${escHtml(p.name)}</div>
+                ${barcode}
+            </div>
+            <div class="d-flex flex-column align-items-end gap-1">
+                <div class="pm-price">${Number(p.sell_price).toFixed(3)}</div>
+                <span class="pm-stock ${stockCls}">
+                    <i class="bi ${stockIco}"></i> ${qty.toFixed(2)}
+                </span>
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+    document.getElementById('pm-body').innerHTML = html;
+}
+
+function escHtml(str) {
+    const d = document.createElement('div');
+    d.innerText = str || '';
+    return d.innerHTML;
+}
+</script>
+{% endblock %}

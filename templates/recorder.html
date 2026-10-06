@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>مسجّل الشاشة الذكي — تاجر</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --brand:    #0f7a5a;
+  --brand-d:  #0c684d;
+  --brand-dd: #0a5540;
+  --gold:     #b58a34;
+  --gold-l:   #e8c96a;
+  --bg:       #060e0b;
+  --bg2:      #0c1812;
+  --bg3:      #111f18;
+  --surf:     #162219;
+  --border:   rgba(15,122,90,.18);
+  --text:     #e0ece7;
+  --muted:    #6e9089;
+  --danger:   #d94040;
+  --danger-d: #b83232;
+}
+
+html, body { height: 100%; background: var(--bg); font-family: 'IBM Plex Sans Arabic','Tajawal',sans-serif; color: var(--text); overflow: hidden; }
+
+/* ── APP SHELL ── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── TOP BAR ── */
+#topbar {
+  flex-shrink: 0; height: 50px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.2rem;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  z-index: 200;
+  gap: 1rem;
+}
+.tb-brand { display: flex; align-items: center; gap: .6rem; font-weight: 700; font-size: .95rem; flex-shrink: 0; }
+.tb-brand img { height: 24px; filter: brightness(0) invert(1) opacity(.8); }
+.tb-brand .sep { color: rgba(255,255,255,.15); font-weight: 300; }
+.tb-brand .pg  { color: var(--muted); font-size: .8rem; font-weight: 500; }
+
+.tb-mid { flex: 1; display: flex; align-items: center; justify-content: center; gap: 1rem; }
+
+/* status pill */
+#status-pill {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .28rem .9rem;
+  border-radius: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  font-size: .78rem; font-weight: 600;
+}
+.sp-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background .3s; }
+.sp-dot.rec { background: var(--danger); box-shadow: 0 0 7px var(--danger); animation: blinkR .9s infinite; }
+.sp-dot.ok  { background: var(--brand); box-shadow: 0 0 6px var(--brand); }
+@keyframes blinkR { 0%,100%{opacity:1} 50%{opacity:.25} }
+#sp-timer { font-variant-numeric: tabular-nums; color: var(--danger); font-weight: 700; display: none; }
+
+/* upload bar in topbar */
+#tb-upload { display: none; align-items: center; gap: .6rem; }
+#up-track  { width: 150px; height: 3px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+#up-fill   { height: 100%; width: 0; background: linear-gradient(90deg, var(--brand), var(--gold)); transition: width .2s; }
+#up-pct    { font-size: .75rem; color: var(--muted); min-width: 2.5em; }
+
+.tb-right { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+.tb-btn {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .3rem .8rem;
+  border-radius: 6px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted);
+  font-size: .78rem; cursor: pointer;
+  transition: all .15s; text-decoration: none;
+  font-family: inherit;
+}
+.tb-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+/* ── MAIN AREA ── */
+#main { flex: 1; display: flex; overflow: hidden; }
+
+/* ── DEMO AREA (iframe) ── */
+#demo-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  transition: flex .35s ease;
+}
+
+#shop-frame {
+  width: 100%; height: 100%;
+  border: none;
+  display: block;
+  background: var(--bg);
+}
+
+/* Idle overlay (before recording starts) */
+#idle-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1rem; text-align: center;
+  background: rgba(6,14,11,.85);
+  backdrop-filter: blur(3px);
+  z-index: 10;
+  pointer-events: none;
+}
+#idle-overlay .io-icon { font-size: 3.5rem; opacity: .18; }
+#idle-overlay p { font-size: .9rem; color: var(--muted); max-width: 30ch; line-height: 1.65; }
+#idle-overlay.hidden { display: none; }
+
+/* Recording HUD (top overlay when recording) */
+#rec-hud {
+  position: absolute;
+  top: .9rem; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 1.2rem;
+  background: rgba(9,18,14,.92);
+  border: 1px solid rgba(217,64,64,.35);
+  border-radius: 10px;
+  padding: .55rem 1.4rem;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 24px rgba(0,0,0,.5);
+  pointer-events: all;
+}
+#rec-hud .rh-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 8px var(--danger); animation: blinkR .9s infinite; flex-shrink: 0; }
+#rh-timer { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #fff; letter-spacing: .05em; }
+#rh-label { font-size: .7rem; color: var(--muted); letter-spacing: .15em; font-weight: 600; }
+.rh-sep { width: 1px; height: 1.2rem; background: rgba(255,255,255,.1); }
+#btn-stop-hud {
+  padding: .35rem 1rem;
+  border-radius: 6px; border: 1px solid rgba(217,64,64,.4);
+  background: rgba(217,64,64,.12); color: #ff7777;
+  font-family: inherit; font-size: .78rem; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+#btn-stop-hud:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+#rec-hud.hidden { display: none; }
+
+/* Preview video overlay */
+#preview-wrap {
+  position: absolute; inset: 0;
+  background: #000;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1rem;
+  z-index: 20;
+}
+#preview-wrap.hidden { display: none; }
+#preview-vid {
+  max-width: 95%; max-height: 88%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  box-shadow: 0 0 40px rgba(0,0,0,.7), 0 0 20px rgba(15,122,90,.12);
+  background: #000;
+}
+.pv-label { font-size: .82rem; color: var(--muted); }
+
+/* Processing spinner overlay */
+#proc-overlay {
+  position: absolute; inset: 0;
+  background: rgba(6,14,11,.88);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1rem;
+  z-index: 30;
+  backdrop-filter: blur(4px);
+}
+#proc-overlay.hidden { display: none; }
+.spin { width: 44px; height: 44px; border-radius: 50%; border: 3px solid rgba(15,122,90,.18); border-top-color: var(--brand); animation: spin .75s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.proc-txt { font-size: .9rem; color: var(--muted); }
+
+/* Zoom crosshair indicator (shown when recording) */
+#zoom-hint {
+  position: absolute;
+  bottom: 1rem; right: 1rem;
+  background: rgba(9,18,14,.8);
+  border: 1px solid rgba(15,122,90,.3);
+  border-radius: 6px;
+  padding: .25rem .65rem;
+  font-size: .7rem; font-weight: 700;
+  color: var(--brand); letter-spacing: .06em;
+  pointer-events: none; z-index: 40;
+  display: none;
+}
+
+/* ── SETTINGS PANEL ── */
+#panel {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem;
+  gap: 1rem;
+  transition: width .35s ease, opacity .3s ease, padding .35s ease;
+}
+#panel.collapsed { width: 0; opacity: 0; padding: 0; pointer-events: none; overflow: hidden; }
+
+.ps { display: flex; flex-direction: column; gap: .6rem; }
+.ps-title { font-size: .65rem; font-weight: 700; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
+
+/* URL input */
+.url-row { display: flex; gap: .4rem; }
+.url-input {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .4rem .6rem;
+  color: var(--text);
+  font-family: monospace; font-size: .75rem;
+  direction: ltr; outline: none;
+  transition: border-color .15s;
+}
+.url-input:focus { border-color: var(--brand); }
+.url-go {
+  padding: .4rem .7rem;
+  border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--muted);
+  font-family: inherit; font-size: .75rem;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.url-go:hover { border-color: var(--brand); color: var(--brand); }
+
+/* Slider rows */
+.sl-row { display: flex; flex-direction: column; gap: .28rem; }
+.sl-row label { display: flex; justify-content: space-between; font-size: .78rem; color: var(--muted); white-space: nowrap; }
+.sl-row label span { color: var(--text); font-weight: 700; }
+input[type=range] { width: 100%; accent-color: var(--brand); cursor: pointer; }
+
+/* Checkbox row */
+.chk-row { display: flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--muted); cursor: pointer; }
+.chk-row input[type=checkbox] { accent-color: var(--brand); width: 13px; height: 13px; flex-shrink: 0; }
+
+/* Divider */
+.div { height: 1px; background: var(--border); }
+
+/* Buttons */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: .45rem;
+  padding: .65rem .9rem;
+  border-radius: 7px; border: none;
+  font-family: inherit; font-size: .85rem; font-weight: 700;
+  cursor: pointer; transition: all .15s; width: 100%;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: .38; cursor: not-allowed; }
+.btn-g  { background: var(--brand); color: #fff; box-shadow: 0 3px 14px rgba(15,122,90,.35); }
+.btn-g:not(:disabled):hover  { background: var(--brand-d); box-shadow: 0 5px 20px rgba(15,122,90,.5); }
+.btn-r  { background: var(--danger); color: #fff; box-shadow: 0 3px 14px rgba(217,64,64,.3); }
+.btn-r:not(:disabled):hover  { background: var(--danger-d); }
+.btn-gh { background: var(--bg3); border: 1px solid var(--border); color: var(--muted); }
+.btn-gh:not(:disabled):hover { border-color: var(--brand); color: var(--brand); }
+.btn-gd { background: linear-gradient(135deg, var(--gold), #d4a843); color: #fff; box-shadow: 0 3px 14px rgba(181,138,52,.3); }
+.btn-gd:not(:disabled):hover { filter: brightness(1.1); }
+
+/* Info box */
+.info {
+  background: rgba(15,122,90,.07);
+  border: 1px solid rgba(15,122,90,.18);
+  border-radius: 7px;
+  padding: .6rem .8rem;
+  font-size: .74rem; color: var(--muted); line-height: 1.7;
+}
+.info strong { color: var(--brand); }
+
+/* Filename input */
+.fn-input {
+  width: 100%;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; padding: .4rem .6rem;
+  color: var(--text); font-family: monospace; font-size: .76rem;
+  direction: ltr; outline: none; transition: border-color .15s;
+}
+.fn-input:focus { border-color: var(--brand); }
+
+/* ── HIDDEN PROCESSING ELEMENTS ── */
+/* These are positioned off-screen so they don't appear in tab capture */
+#proc-canvas {
+  position: fixed;
+  left: -9999px; top: -9999px;
+  pointer-events: none;
+}
+#src-vid {
+  position: fixed;
+  left: -9999px; top: -9999px;
+  pointer-events: none;
+}
+
+/* ── TOAST ── */
+#toast {
+  position: fixed;
+  bottom: 1.2rem; left: 50%; transform: translateX(-50%);
+  background: var(--bg3);
+  border: 1px solid var(--brand);
+  border-radius: 9px;
+  padding: .7rem 1.4rem;
+  font-size: .84rem; color: var(--text);
+  display: none; align-items: center; gap: .5rem;
+  z-index: 9999;
+  box-shadow: 0 4px 20px rgba(15,122,90,.28);
+  white-space: nowrap;
+}
+#toast.show { display: flex; animation: slideUp .3s ease; }
+@keyframes slideUp { from { opacity:0; transform:translateX(-50%) translateY(16px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+
+/* ── GRID BG ── */
+#demo-area::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(15,122,90,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15,122,90,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+#shop-frame, #idle-overlay, #rec-hud, #preview-wrap, #proc-overlay, #zoom-hint { z-index: 1; }
+#demo-area::after { z-index: 0; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── TOP BAR ── -->
+  <div id="topbar">
+    <div class="tb-brand">
+      <img src="/static/run.png" alt="RUNX"/>
+      <span class="sep">|</span>
+      <span>تاجر</span>
+      <span class="sep">·</span>
+      <span class="pg">مسجّل الشاشة الذكي</span>
+    </div>
+
+    <div class="tb-mid">
+      <div id="status-pill">
+        <div class="sp-dot" id="sp-dot"></div>
+        <span id="sp-text">جاهز للتسجيل</span>
+        <span id="sp-timer">00:00</span>
+      </div>
+      <div id="tb-upload">
+        <div id="up-track"><div id="up-fill"></div></div>
+        <span id="up-pct">0%</span>
+      </div>
+    </div>
+
+    <div class="tb-right">
+      <a href="/dashboard" class="tb-btn">← لوحة التحكم</a>
+    </div>
+  </div>
+
+  <!-- ── MAIN ── -->
+  <div id="main">
+
+    <!-- Demo / iframe area -->
+    <div id="demo-area">
+
+      <!-- Shop embedded iframe -->
+      <iframe id="shop-frame" src="/pos" title="تاجر - العرض التجريبي"></iframe>
+
+      <!-- Idle overlay -->
+      <div id="idle-overlay">
+        <div class="io-icon">🎬</div>
+        <p>اضبط الإعدادات في اليمين ثم اضغط<br/><strong style="color:var(--brand)">ابدأ التسجيل</strong><br/>وتفاعل مع النظام بشكل طبيعي</p>
+      </div>
+
+      <!-- Recording HUD -->
+      <div id="rec-hud" class="hidden">
+        <div class="rh-dot"></div>
+        <div>
+          <div id="rh-label">RECORDING</div>
+          <div id="rh-timer">00:00</div>
+        </div>
+        <div class="rh-sep"></div>
+        <button id="btn-stop-hud">⏹ إيقاف</button>
+      </div>
+
+      <!-- Zoom level hint -->
+      <div id="zoom-hint">ZOOM ×<span id="zh-val">2.0</span></div>
+
+      <!-- Processing overlay -->
+      <div id="proc-overlay" class="hidden">
+        <div class="spin"></div>
+        <div class="proc-txt">جارٍ معالجة الفيديو…</div>
+      </div>
+
+      <!-- Recorded video preview -->
+      <div id="preview-wrap" class="hidden">
+        <div class="pv-label">📽 معاينة التسجيل — يمكنك إعادة التشغيل قبل الرفع</div>
+        <video id="preview-vid" controls></video>
+      </div>
+
+    </div>
+
+    <!-- Settings panel -->
+    <div id="panel">
+
+      <!-- Page to demo -->
+      <div class="ps">
+        <div class="ps-title">صفحة العرض</div>
+        <div class="url-row">
+          <input type="text" class="url-input" id="inp-url" value="/pos" placeholder="/pos"/>
+          <button class="url-go" id="btn-nav">انتقل</button>
+        </div>
+        <div class="info" style="font-size:.7rem;">
+          اكتب أي مسار من التطبيق ثم اضغط <strong>انتقل</strong>. مثال: <code style="color:var(--gold)">/dashboard</code>, <code style="color:var(--gold)">/pos</code>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <!-- Zoom settings -->
+      <div class="ps">
+        <div class="ps-title">إعدادات التكبير</div>
+
+        <div class="sl-row">
+          <label>مستوى التكبير <span id="lbl-zoom">×2.0</span></label>
+          <input type="range" id="inp-zoom" min="1.0" max="4.0" step="0.1" value="2.0"/>
+        </div>
+
+        <div class="sl-row">
+          <label>سرعة التتبع <span id="lbl-lerp">متوسطة</span></label>
+          <input type="range" id="inp-lerp" min="0.02" max="0.25" step="0.01" value="0.08"/>
+        </div>
+
+        <div class="sl-row">
+          <label>معدل الإطارات <span id="lbl-fps">30 fps</span></label>
+          <input type="range" id="inp-fps" min="15" max="60" step="5" value="30"/>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <!-- Cursor -->
+      <div class="ps">
+        <div class="ps-title">مؤشر الفأرة</div>
+        <label class="chk-row">
+          <input type="checkbox" id="chk-cursor" checked/>
+          إظهار مؤشر مخصص في التسجيل
+        </label>
+        <div class="sl-row">
+          <label>حجم المؤشر <span id="lbl-cur">متوسط</span></label>
+          <input type="range" id="inp-cur" min="6" max="28" step="2" value="14"/>
+        </div>
+        <div class="sl-row">
+          <label>لون المؤشر</label>
+          <select id="inp-curcol" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.3rem .5rem;font-family:inherit;font-size:.78rem;width:100%;outline:none;">
+            <option value="brand">أخضر (العلامة التجارية)</option>
+            <option value="white">أبيض</option>
+            <option value="gold">ذهبي</option>
+            <option value="red">أحمر</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <!-- Controls -->
+      <div class="ps">
+        <div class="ps-title">التحكم</div>
+        <button class="btn btn-g" id="btn-start">● ابدأ التسجيل</button>
+        <button class="btn btn-r" id="btn-stop" disabled>⏹ إيقاف</button>
+        <button class="btn btn-gh" id="btn-discard" disabled>🗑 تجاهل وإعادة</button>
+      </div>
+
+      <div class="div"></div>
+
+      <!-- Upload -->
+      <div class="ps">
+        <div class="ps-title">رفع التسجيل</div>
+        <div class="sl-row">
+          <label style="flex-direction:column;gap:.2rem;">اسم الملف</label>
+          <input type="text" class="fn-input" id="inp-fn" placeholder="demo_recording"/>
+        </div>
+        <button class="btn btn-gd" id="btn-upload" disabled>⬆ رفع إلى المتجر</button>
+      </div>
+
+      <div class="div"></div>
+
+      <!-- How it works -->
+      <div class="info">
+        <strong>كيف يعمل؟</strong><br/>
+        التطبيق مضمَّن في الإطار المجاور. عند التسجيل، يتتبع النظام المؤشر بدقة داخل التطبيق ويُطبّق تكبيراً ناعماً تلقائياً.<br/><br/>
+        <strong>النتيجة:</strong> فيديو احترافي جاهز للرفع والمشاركة.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── HIDDEN PROCESSING ELEMENTS (off-screen, not captured) ── -->
+<canvas id="proc-canvas"></canvas>
+<video  id="src-vid" muted playsinline></video>
+
+<!-- Toast -->
+<div id="toast"><span id="toast-ico">✅</span><span id="toast-msg"></span></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════ */
+const S = {
+  phase      : 'idle',   // idle | recording | processing | preview
+  srcStream  : null,
+  mediaRec   : null,
+  chunks     : [],
+  recBlob    : null,
+  recUrl     : null,
+  startMs    : 0,
+  timerIv    : null,
+  rafId      : null,
+  // mouse (normalized 0-1 in captured viewport)
+  mouseNX    : 0.5,
+  mouseNY    : 0.5,
+  camNX      : 0.5,
+  camNY      : 0.5,
+  // settings
+  zoom       : 2.0,
+  lerp       : 0.08,
+  fps        : 30,
+  showCursor : true,
+  curSize    : 14,
+  curColor   : 'brand',
+};
+
+/* ═══════════════════════════════════════════════════════════
+   ELEMENTS
+═══════════════════════════════════════════════════════════ */
+const $  = id => document.getElementById(id);
+const el = {
+  panel      : $('panel'),
+  demoArea   : $('demo-area'),
+  shopFrame  : $('shop-frame'),
+  idleOvl    : $('idle-overlay'),
+  recHud     : $('rec-hud'),
+  rhTimer    : $('rh-timer'),
+  zoomHint   : $('zoom-hint'),
+  zhVal      : $('zh-val'),
+  procOvl    : $('proc-overlay'),
+  prevWrap   : $('preview-wrap'),
+  prevVid    : $('preview-vid'),
+  procCanvas : $('proc-canvas'),
+  srcVid     : $('src-vid'),
+  spDot      : $('sp-dot'),
+  spText     : $('sp-text'),
+  spTimer    : $('sp-timer'),
+  tbUpload   : $('tb-upload'),
+  upFill     : $('up-fill'),
+  upPct      : $('up-pct'),
+  btnStart   : $('btn-start'),
+  btnStop    : $('btn-stop'),
+  btnStopHud : $('btn-stop-hud'),
+  btnDiscard : $('btn-discard'),
+  btnUpload  : $('btn-upload'),
+  inpUrl     : $('inp-url'),
+  inpFn      : $('inp-fn'),
+  inpZoom    : $('inp-zoom'),
+  inpLerp    : $('inp-lerp'),
+  inpFps     : $('inp-fps'),
+  chkCursor  : $('chk-cursor'),
+  inpCur     : $('inp-cur'),
+  inpCurCol  : $('inp-curcol'),
+};
+const ctx = el.procCanvas.getContext('2d');
+
+/* ═══════════════════════════════════════════════════════════
+   CURSOR COLORS
+═══════════════════════════════════════════════════════════ */
+const CURSOR_COLORS = {
+  brand: { fill: 'rgba(15,122,90,.4)', stroke: '#0f7a5a', center: '#46d29e' },
+  white: { fill: 'rgba(255,255,255,.25)', stroke: '#ffffff', center: '#ffffff' },
+  gold:  { fill: 'rgba(181,138,52,.4)', stroke: '#b58a34', center: '#e8c96a' },
+  red:   { fill: 'rgba(217,64,64,.4)', stroke: '#d94040', center: '#ff7777' },
+};
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS SYNC
+═══════════════════════════════════════════════════════════ */
+function syncSettings() {
+  S.zoom       = parseFloat(el.inpZoom.value);
+  S.lerp       = parseFloat(el.inpLerp.value);
+  S.fps        = parseInt(el.inpFps.value);
+  S.showCursor = el.chkCursor.checked;
+  S.curSize    = parseInt(el.inpCur.value);
+  S.curColor   = el.inpCurCol.value;
+
+  $('lbl-zoom').textContent = `×${S.zoom.toFixed(1)}`;
+  $('lbl-fps').textContent  = `${S.fps} fps`;
+  $('lbl-cur').textContent  = S.curSize < 10 ? 'صغير' : S.curSize < 20 ? 'متوسط' : 'كبير';
+  el.zhVal.textContent      = S.zoom.toFixed(1);
+
+  const lerpLabels = [[.05,'بطيئة جداً'],[.1,'متوسطة'],[.18,'سريعة'],[Infinity,'سريعة جداً']];
+  $('lbl-lerp').textContent = (lerpLabels.find(([t]) => S.lerp <= t) || ['','متوسطة'])[1];
+}
+
+['inp-zoom','inp-lerp','inp-fps','inp-cur'].forEach(id => $(id).addEventListener('input', syncSettings));
+el.chkCursor.addEventListener('change', syncSettings);
+el.inpCurCol.addEventListener('change', syncSettings);
+syncSettings();
+
+/* ═══════════════════════════════════════════════════════════
+   IFRAME NAVIGATION
+═══════════════════════════════════════════════════════════ */
+$('btn-nav').addEventListener('click', () => {
+  const url = el.inpUrl.value.trim() || '/pos';
+  el.shopFrame.src = url;
+});
+el.inpUrl.addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-nav').click(); });
+
+/* ═══════════════════════════════════════════════════════════
+   MOUSE TRACKING
+   ─────────────────────────────────────────────────────────
+   KEY FIX: use clientX/Y (tab-relative) NOT screenX/Y.
+   We track on BOTH the main document and the iframe
+   document (same-origin), so we get correct coordinates
+   no matter where the cursor is.
+═══════════════════════════════════════════════════════════ */
+
+/**
+ * absX, absY: absolute position in the CURRENT TAB viewport (px)
+ * Normalize to 0-1 relative to the full viewport size.
+ */
+function updateMouse(absX, absY) {
+  S.mouseNX = Math.max(0, Math.min(1, absX / window.innerWidth));
+  S.mouseNY = Math.max(0, Math.min(1, absY / window.innerHeight));
+}
+
+// Main document tracking
+document.addEventListener('mousemove', e => {
+  updateMouse(e.clientX, e.clientY);
+});
+
+/**
+ * Hook mousemove on the iframe's content document.
+ * Must be called every time the iframe navigates (re-hooked on load).
+ */
+function hookIframeMouse() {
+  try {
+    const frame = el.shopFrame;
+    const doc   = frame.contentDocument || frame.contentWindow.document;
+    doc.addEventListener('mousemove', e => {
+      const rect = frame.getBoundingClientRect();
+      updateMouse(rect.left + e.clientX, rect.top + e.clientY);
+    });
+  } catch (err) {
+    // cross-origin would throw; same-origin is fine
+    console.warn('[recorder] iframe mouse hook failed:', err.message);
+  }
+}
+
+// Hook now and on every navigation inside the iframe
+el.shopFrame.addEventListener('load', hookIframeMouse);
+hookIframeMouse();
+
+/* ═══════════════════════════════════════════════════════════
+   CANVAS RENDER LOOP
+   ─────────────────────────────────────────────────────────
+   Reads from hidden srcVid (playing captured tab stream),
+   applies smooth zoom toward mouse position,
+   draws result into hidden proc-canvas (off-screen).
+   The canvas stream is what gets recorded by MediaRecorder.
+═══════════════════════════════════════════════════════════ */
+function renderFrame() {
+  if (S.phase !== 'recording') return;
+  S.rafId = requestAnimationFrame(renderFrame);
+
+  const vid  = el.srcVid;
+  const srcW = vid.videoWidth;
+  const srcH = vid.videoHeight;
+  if (!srcW || !srcH) return;
+
+  // Ensure canvas size matches source
+  if (el.procCanvas.width !== srcW || el.procCanvas.height !== srcH) {
+    el.procCanvas.width  = srcW;
+    el.procCanvas.height = srcH;
+  }
+
+  // ── LERP camera toward mouse ──
+  S.camNX += (S.mouseNX - S.camNX) * S.lerp;
+  S.camNY += (S.mouseNY - S.camNY) * S.lerp;
+
+  // ── Compute crop window (zoom region) ──
+  const zoom  = S.zoom;
+  const cropW = srcW / zoom;
+  const cropH = srcH / zoom;
+
+  // Center crop around camera position, clamped to bounds
+  let sx = S.camNX * srcW - cropW / 2;
+  let sy = S.camNY * srcH - cropH / 2;
+  sx = Math.max(0, Math.min(srcW - cropW, sx));
+  sy = Math.max(0, Math.min(srcH - cropH, sy));
+
+  // ── Draw zoomed frame ──
+  ctx.clearRect(0, 0, srcW, srcH);
+  ctx.drawImage(vid, sx, sy, cropW, cropH, 0, 0, srcW, srcH);
+
+  // ── Draw cursor overlay ──
+  if (S.showCursor) {
+    // Map normalized mouse to canvas coords
+    const cx = ((S.mouseNX * srcW) - sx) / cropW * srcW;
+    const cy = ((S.mouseNY * srcH) - sy) / cropH * srcH;
+    const r  = S.curSize;
+    const cc = CURSOR_COLORS[S.curColor] || CURSOR_COLORS.brand;
+
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
+    ctx.strokeStyle = cc.stroke + '55';
+    ctx.lineWidth   = 1;
+    ctx.stroke();
+
+    // Main circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle   = cc.fill;
+    ctx.fill();
+    ctx.strokeStyle = cc.stroke;
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fillStyle = cc.center;
+    ctx.fill();
+
+    // Cross hair lines
+    ctx.strokeStyle = cc.stroke + 'aa';
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.moveTo(cx - r - 8, cy); ctx.lineTo(cx - r - 2, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + r + 2, cy); ctx.lineTo(cx + r + 8, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - r - 8); ctx.lineTo(cx, cy - r - 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy + r + 2); ctx.lineTo(cx, cy + r + 8); ctx.stroke();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TIMER
+═══════════════════════════════════════════════════════════ */
+function fmtTime(ms) {
+  const s = Math.floor(ms / 1000), m = Math.floor(s / 60), ss = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+function startTimer() {
+  S.startMs = Date.now();
+  S.timerIv = setInterval(() => {
+    const t = fmtTime(Date.now() - S.startMs);
+    el.rhTimer.textContent = t;
+    el.spTimer.textContent = t;
+  }, 500);
+}
+function stopTimer() { clearInterval(S.timerIv); S.timerIv = null; }
+
+/* ═══════════════════════════════════════════════════════════
+   PHASE TRANSITIONS
+═══════════════════════════════════════════════════════════ */
+function setPhase(phase) {
+  S.phase = phase;
+
+  // Reset all overlays
+  el.idleOvl.classList.add('hidden');
+  el.recHud.classList.add('hidden');
+  el.procOvl.classList.add('hidden');
+  el.prevWrap.classList.add('hidden');
+  el.zoomHint.style.display = 'none';
+
+  // Status pill
+  el.spDot.className = 'sp-dot';
+  el.spTimer.style.display = 'none';
+  el.tbUpload.style.display = 'none';
+
+  if (phase === 'idle') {
+    el.panel.classList.remove('collapsed');
+    el.idleOvl.classList.remove('hidden');
+    el.spDot.className = 'sp-dot';
+    el.spText.textContent  = 'جاهز للتسجيل';
+    el.btnStart.disabled   = false;
+    el.btnStop.disabled    = true;
+    el.btnDiscard.disabled = true;
+    el.btnUpload.disabled  = true;
+  }
+  else if (phase === 'recording') {
+    el.panel.classList.add('collapsed');
+    el.recHud.classList.remove('hidden');
+    el.zoomHint.style.display = 'block';
+    el.spDot.className = 'sp-dot rec';
+    el.spText.textContent  = 'جارٍ التسجيل';
+    el.spTimer.style.display = 'inline';
+    el.btnStart.disabled   = true;
+    el.btnStop.disabled    = false;
+    el.btnDiscard.disabled = false;
+    el.btnUpload.disabled  = true;
+  }
+  else if (phase === 'processing') {
+    el.panel.classList.add('collapsed');
+    el.procOvl.classList.remove('hidden');
+    el.spDot.className = 'sp-dot';
+    el.spText.textContent  = 'معالجة…';
+    el.btnStart.disabled   = true;
+    el.btnStop.disabled    = true;
+    el.btnDiscard.disabled = true;
+    el.btnUpload.disabled  = true;
+  }
+  else if (phase === 'preview') {
+    el.panel.classList.remove('collapsed');
+    el.prevWrap.classList.remove('hidden');
+    el.spDot.className = 'sp-dot ok';
+    el.spText.textContent  = 'جاهز للرفع';
+    el.btnStart.disabled   = false;
+    el.btnStop.disabled    = true;
+    el.btnDiscard.disabled = false;
+    el.btnUpload.disabled  = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   START RECORDING
+═══════════════════════════════════════════════════════════ */
+el.btnStart.addEventListener('click', async () => {
+  try {
+
+    // 1. Capture current tab
+    const constraints = {
+      video: {
+        frameRate       : { ideal: S.fps, max: 60 },
+        cursor          : 'never',       // we draw our own cursor overlay
+        displaySurface  : 'browser',     // hint: prefer browser tab
+      },
+      audio: false,
+      preferCurrentTab        : true,    // Chrome 107+ hint
+      selfBrowserSurface      : 'include',
+      systemAudio             : 'exclude',
+    };
+
+    const srcStream = await navigator.mediaDevices.getDisplayMedia(constraints);
+    S.srcStream = srcStream;
+
+    // 2. Feed stream into hidden source video
+    const srcVid    = el.srcVid;
+    srcVid.srcObject = srcStream;
+    srcVid.muted    = true;
+
+    await new Promise((res, rej) => {
+      srcVid.onloadedmetadata = res;
+      srcVid.onerror          = rej;
+      setTimeout(res, 3000); // fallback
+    });
+    await srcVid.play();
+
+    // 3. Set canvas size
+    const vw = srcVid.videoWidth  || 1280;
+    const vh = srcVid.videoHeight || 720;
+    el.procCanvas.width  = vw;
+    el.procCanvas.height = vh;
+
+    // 4. Re-centre camera
+    S.camNX = 0.5; S.camNY = 0.5;
+    S.mouseNX = 0.5; S.mouseNY = 0.5;
+
+    // 5. Transition to recording phase (collapses panel, hides idle overlay)
+    setPhase('recording');
+
+    // 6. Start render loop (reads srcVid → draws zoomed frame to proc-canvas)
+    renderFrame();
+
+    // 7. Capture canvas stream (NOT the screen stream)
+    const canvasStream = el.procCanvas.captureStream(S.fps);
+
+    // 8. Set up MediaRecorder on canvas stream
+    const mimes = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    const mime  = mimes.find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+
+    S.chunks  = [];
+    S.mediaRec = new MediaRecorder(canvasStream, {
+      mimeType           : mime,
+      videoBitsPerSecond : 6_000_000,
+    });
+
+    S.mediaRec.ondataavailable = e => { if (e.data?.size > 0) S.chunks.push(e.data); };
+    S.mediaRec.onstop          = () => onRecordingStopped(mime);
+    S.mediaRec.start(200);
+
+    // 9. Timer
+    startTimer();
+
+    // 10. If user stops sharing from browser UI, stop recording too
+    srcStream.getVideoTracks()[0].addEventListener('ended', () => {
+      if (S.phase === 'recording') stopRecording();
+    });
+
+  } catch (err) {
+    if (err.name !== 'NotAllowedError') {
+      toast('❌', `خطأ في بدء التسجيل: ${err.message}`);
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   STOP RECORDING
+═══════════════════════════════════════════════════════════ */
+function stopRecording() {
+  if (S.phase !== 'recording') return;
+  stopTimer();
+  cancelAnimationFrame(S.rafId);
+  setPhase('processing');
+
+  if (S.mediaRec && S.mediaRec.state !== 'inactive') S.mediaRec.stop();
+  if (S.srcStream) S.srcStream.getTracks().forEach(t => t.stop());
+  el.srcVid.srcObject = null;
+}
+
+el.btnStop.addEventListener('click', stopRecording);
+el.btnStopHud.addEventListener('click', stopRecording);
+
+/* ═══════════════════════════════════════════════════════════
+   RECORDING STOPPED CALLBACK
+═══════════════════════════════════════════════════════════ */
+function onRecordingStopped(mime) {
+  setTimeout(() => {
+    const blob = new Blob(S.chunks, { type: mime });
+    S.recBlob  = blob;
+
+    if (S.recUrl) URL.revokeObjectURL(S.recUrl);
+    S.recUrl = URL.createObjectURL(blob);
+
+    el.prevVid.src = S.recUrl;
+    el.prevVid.load();
+
+    // Auto-generate filename
+    if (!el.inpFn.value.trim()) {
+      const d  = new Date();
+      const ts = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+      el.inpFn.value = `demo_${ts}`;
+    }
+
+    setPhase('preview');
+    toast('✅', `تم إيقاف التسجيل — ${(blob.size/1024/1024).toFixed(1)} MB`);
+  }, 400);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DISCARD
+═══════════════════════════════════════════════════════════ */
+el.btnDiscard.addEventListener('click', () => {
+  if (S.phase === 'recording') stopRecording();
+  if (S.recUrl) { URL.revokeObjectURL(S.recUrl); S.recUrl = null; }
+  S.recBlob = null; S.chunks = [];
+  el.prevVid.src = '';
+  el.inpFn.value = '';
+
+  // Re-hook iframe mouse after panel re-appears
+  setTimeout(hookIframeMouse, 400);
+  setPhase('idle');
+});
+
+/* ═══════════════════════════════════════════════════════════
+   UPLOAD
+═══════════════════════════════════════════════════════════ */
+el.btnUpload.addEventListener('click', async () => {
+  if (!S.recBlob) return;
+
+  const rawName = (el.inpFn.value.trim() || 'demo_recording').replace(/[^a-z0-9_\-]/gi, '_');
+  const filename = rawName + '.webm';
+
+  const fd = new FormData();
+  fd.append('video', S.recBlob, filename);
+
+  el.btnUpload.disabled    = true;
+  el.btnUpload.textContent = 'جارٍ الرفع…';
+  el.tbUpload.style.display = 'flex';
+  el.upFill.style.width    = '0%';
+  el.upPct.textContent     = '0%';
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload_recording');
+
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) {
+          const pct = Math.round(e.loaded / e.total * 100);
+          el.upFill.style.width = pct + '%';
+          el.upPct.textContent  = pct + '%';
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch { reject(new Error('استجابة غير صالحة من الخادم')); }
+      });
+      xhr.addEventListener('error', () => reject(new Error('خطأ في الشبكة')));
+      xhr.send(fd);
+    });
+
+    if (!result.success) throw new Error(result.message);
+
+    el.upFill.style.width    = '100%';
+    el.upPct.textContent     = '✓';
+    el.btnUpload.textContent = '✓ تم الرفع';
+    el.btnUpload.style.background = 'var(--brand)';
+
+    toast('✅', `تم الرفع: ${result.filename} (${result.size_kb} KB)`);
+    setTimeout(() => { el.tbUpload.style.display = 'none'; }, 3000);
+
+  } catch (err) {
+    toast('❌', `فشل الرفع: ${err.message}`);
+    el.btnUpload.disabled    = false;
+    el.btnUpload.textContent = '⬆ إعادة المحاولة';
+    el.tbUpload.style.display = 'none';
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════ */
+function toast(ico, msg) {
+  $('toast-ico').textContent = ico;
+  $('toast-msg').textContent = msg;
+  const t = $('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4500);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════ */
+setPhase('idle');
+
+// Hook iframe mouse after initial load
+el.shopFrame.addEventListener('load', hookIframeMouse);
+</script>
+</body>
+</html>

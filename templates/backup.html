@@ -1,0 +1,174 @@
+<!-- ==============================================================================
+     FILE: templates/backup.html - النسخ الاحتياطي (إعادة تصميم)
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}النسخ الاحتياطي{% endblock %}
+{% block page_title %}النسخ الاحتياطي{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== Hero action card ===== */
+    .backup-hero {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background:
+            radial-gradient(120% 140% at 100% 0%, rgba(15,122,90,.10) 0%, rgba(15,122,90,0) 55%),
+            linear-gradient(180deg, var(--surface), var(--surface-2));
+        box-shadow: var(--shadow-sm);
+        padding: 26px 28px;
+    }
+    .backup-hero::after {
+        content: "";
+        position: absolute;
+        left: -40px; bottom: -60px;
+        width: 200px; height: 200px;
+        background: radial-gradient(circle, rgba(181,138,52,.12), transparent 70%);
+        pointer-events: none;
+    }
+    .backup-hero .hero-flex {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 22px; flex-wrap: wrap; position: relative; z-index: 1;
+    }
+    .backup-hero .hero-icon {
+        width: 58px; height: 58px; flex-shrink: 0;
+        border-radius: 16px;
+        display: grid; place-items: center;
+        font-size: 1.55rem; color: #fff;
+        background: linear-gradient(140deg, var(--brand), var(--brand-700));
+        box-shadow: 0 6px 18px rgba(15,122,90,.32), inset 0 1px 0 rgba(255,255,255,.25);
+    }
+    .backup-hero h6 { margin: 0; font-weight: 800; font-size: 1.08rem; color: var(--ink); }
+    .backup-hero p { margin: 5px 0 0; color: var(--text-2); font-size: .9rem; max-width: 46ch; }
+
+    /* ===== Info pills ===== */
+    .backup-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; position: relative; z-index: 1; }
+    .meta-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: var(--surface); border: 1px solid var(--border);
+        padding: 5px 11px; border-radius: 30px;
+        font-size: .78rem; font-weight: 600; color: var(--text-2);
+        box-shadow: var(--shadow-xs);
+    }
+    .meta-pill i { color: var(--brand); }
+
+    /* ===== Backup file list ===== */
+    .bk-item {
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        transition: background .12s ease;
+    }
+    .bk-item:last-child { border-bottom: 0; }
+    .bk-item:hover { background: var(--brand-050); }
+
+    .bk-file { display: flex; align-items: center; gap: 13px; min-width: 0; }
+    .bk-file .fico {
+        width: 40px; height: 40px; flex-shrink: 0;
+        border-radius: 11px;
+        display: grid; place-items: center;
+        background: var(--gold-050); color: var(--gold);
+        font-size: 1.15rem;
+    }
+    .bk-file .fname {
+        font-weight: 600; color: var(--ink); font-size: .9rem;
+        font-family: 'Tajawal', monospace;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bk-file .fsub { font-size: .74rem; color: var(--muted); margin-top: 1px; }
+
+    .bk-count {
+        font-size: .72rem; font-weight: 700; color: var(--brand-700);
+        background: var(--brand-050); border-radius: 20px; padding: 3px 10px;
+    }
+
+    /* ===== Empty ===== */
+    .backup-empty { padding: 46px 0; text-align: center; color: var(--muted); }
+    .backup-empty .eico {
+        width: 60px; height: 60px; margin: 0 auto 14px;
+        border-radius: 16px; display: grid; place-items: center;
+        background: var(--bg); color: var(--muted); font-size: 1.7rem;
+    }
+    .backup-empty p { margin: 0; font-size: .9rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h3><i class="bi bi-hdd-network" style="color:var(--brand)"></i> النسخ الاحتياطي لقاعدة البيانات</h3>
+    <p>إنشاء وتنزيل نسخ احتياطية كاملة من بيانات النظام (منتجات، فواتير، مستخدمين... إلخ)</p>
+</div>
+
+{% if message %}
+<div class="alert alert-success d-flex align-items-center gap-2">
+    <i class="bi bi-check-circle-fill"></i> <span>{{ message }}</span>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-danger d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle-fill"></i> <span>{{ error }}</span>
+</div>
+{% endif %}
+
+<!-- ===== إنشاء نسخة جديدة ===== -->
+<div class="backup-hero mb-4">
+    <div class="hero-flex">
+        <div class="d-flex align-items-start gap-3">
+            <div class="hero-icon"><i class="bi bi-shield-check"></i></div>
+            <div>
+                <h6>إنشاء نسخة احتياطية جديدة</h6>
+                <p>سيتم حفظ نسخة كاملة من البيانات الحالية بتاريخ اليوم. يُنصح بالنسخ بشكل دوري لحماية بياناتك.</p>
+                <div class="backup-meta">
+                    <span class="meta-pill"><i class="bi bi-database"></i> بيانات كاملة</span>
+                    <span class="meta-pill"><i class="bi bi-file-earmark-zip"></i> ملف مضغوط</span>
+                    <span class="meta-pill"><i class="bi bi-calendar-event"></i> {{ now().strftime('%Y-%m-%d') if now else 'اليوم' }}</span>
+                </div>
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('backup') }}" class="m-0">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="create_backup">
+            <button type="submit" class="btn btn-primary btn-lg px-4">
+                <i class="bi bi-cloud-arrow-down me-1"></i> إنشاء الآن
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ===== النسخ المتوفرة ===== -->
+<div class="card">
+    <div class="card-header justify-content-between">
+        <span><i class="bi bi-archive"></i> النسخ المتوفرة</span>
+        {% if existing_backups %}
+        <span class="bk-count">{{ existing_backups|length }} نسخة</span>
+        {% endif %}
+    </div>
+    <div>
+        {% if existing_backups %}
+            {% for f in existing_backups %}
+            <div class="bk-item">
+                <div class="bk-file">
+                    <span class="fico"><i class="bi bi-file-earmark-zip"></i></span>
+                    <div style="min-width:0;">
+                        <div class="fname">{{ f }}</div>
+                        <div class="fsub"><i class="bi bi-hdd"></i> نسخة احتياطية كاملة</div>
+                    </div>
+                </div>
+                <a href="{{ url_for('download_backup', filename=f) }}" class="btn btn-sm btn-outline-primary flex-shrink-0">
+                    <i class="bi bi-download me-1"></i> تنزيل
+                </a>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="backup-empty">
+                <div class="eico"><i class="bi bi-inbox"></i></div>
+                <p>لا توجد نسخ احتياطية بعد</p>
+                <p class="mt-1" style="font-size:.82rem;">ابدأ بإنشاء أول نسخة احتياطية من الزر بالأعلى</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

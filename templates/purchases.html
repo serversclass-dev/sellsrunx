@@ -1,0 +1,515 @@
+<!-- ==============================================================================
+     FILE: templates/purchases.html - المشتريات مع زر طباعة لكل فاتورة
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}المشتريات{% endblock %}
+{% block page_title %}المشتريات{% endblock %}
+
+{% block extra_css %}
+<style>
+    .purchases-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .purchases-card { overflow: hidden; }
+    .purchases-card .card-header { justify-content: space-between; }
+
+    .purchase-count {
+        display: inline-flex; align-items: center; gap: 6px;
+        border-radius: 30px; background: var(--brand-050); color: var(--brand-700);
+        padding: 4px 11px; font-size: .76rem; font-weight: 800;
+    }
+
+    .purchase-number {
+        display: inline-flex; align-items: center; gap: 7px;
+        direction: ltr; border-radius: 20px;
+        background: var(--bg); border: 1px solid var(--border);
+        color: var(--ink); padding: 4px 10px;
+        font-size: .78rem; font-weight: 900;
+        font-family: 'Tajawal', ui-monospace, monospace;
+    }
+
+    .supplier-cell, .user-cell {
+        display: flex; align-items: center; gap: 10px;
+    }
+
+    .supplier-icon, .user-icon {
+        width: 34px; height: 34px; flex-shrink: 0;
+        border-radius: 10px; display: grid; place-items: center; font-size: .95rem;
+    }
+
+    .supplier-icon { background: var(--gold-050); color: var(--gold); }
+    .user-icon     { background: var(--brand-050); color: var(--brand); }
+
+    .cell-title { font-weight: 800; color: var(--ink); }
+    .cell-muted { color: var(--muted); font-size: .76rem; margin-top: 1px; }
+
+    .money {
+        direction: ltr; text-align: right;
+        font-weight: 900; color: var(--ink);
+        font-family: 'Tajawal', sans-serif;
+    }
+
+    .date-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        color: var(--text-2); font-weight: 700; font-size: .82rem;
+    }
+    .date-chip i { color: var(--brand); }
+
+    .purchases-empty {
+        padding: 58px 20px; text-align: center; color: var(--muted);
+    }
+    .purchases-empty .eico {
+        width: 66px; height: 66px; margin: 0 auto 14px; border-radius: 18px;
+        display: grid; place-items: center;
+        background: var(--bg); color: var(--muted); font-size: 1.85rem;
+    }
+    .purchases-empty h6 { margin: 0; color: var(--text-2); font-weight: 800; }
+    .purchases-empty p  { margin: 4px 0 0; font-size: .84rem; }
+
+    .purchase-modal-intro {
+        border: 1px solid var(--border); border-radius: var(--radius);
+        background:
+            radial-gradient(100% 120% at 100% 0%, rgba(15,122,90,.08), transparent 55%),
+            var(--surface-2);
+        padding: 14px 16px; margin-bottom: 16px;
+    }
+    .purchase-modal-intro h6 {
+        display: flex; align-items: center; gap: 8px;
+        margin: 0; font-weight: 900; color: var(--ink);
+    }
+    .purchase-modal-intro h6 i { color: var(--brand); }
+    .purchase-modal-intro p   { margin: 4px 0 0; color: var(--muted); font-size: .84rem; }
+
+    .items-panel {
+        border: 1px solid var(--border); border-radius: var(--radius);
+        overflow: hidden; background: var(--surface);
+    }
+    .items-panel-head {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; padding: 13px 16px;
+        background: var(--surface-2); border-bottom: 1px solid var(--border);
+    }
+    .items-panel-head h6 {
+        display: flex; align-items: center; gap: 8px;
+        margin: 0; font-weight: 900; color: var(--ink);
+    }
+    .items-panel-head h6 i { color: var(--brand); }
+
+    .purchase-items-table { margin: 0; }
+    .purchase-items-table th { font-size: .7rem; padding: 10px 12px; }
+    .purchase-items-table td { padding: 10px 12px; vertical-align: middle; }
+    .purchase-items-table .product-select { min-width: 220px; }
+    .purchase-items-table .qty-input  { min-width: 90px;  text-align: center; font-weight: 800; }
+    .purchase-items-table .cost-input { min-width: 110px; text-align: right; direction: ltr; font-weight: 800; }
+
+    .row-total {
+        direction: ltr; text-align: right;
+        color: var(--ink); font-weight: 900;
+        font-family: 'Tajawal', sans-serif; white-space: nowrap;
+    }
+
+    .remove-row-btn {
+        width: 34px; height: 34px; border-radius: 10px;
+        display: inline-flex; align-items: center; justify-content: center; padding: 0;
+    }
+
+    .purchase-total-box {
+        margin-top: 16px; padding: 16px 18px; border-radius: 18px;
+        background: linear-gradient(140deg, var(--brand), var(--brand-700));
+        color: #fff; display: flex; align-items: center;
+        justify-content: space-between; gap: 14px;
+        box-shadow: 0 10px 28px rgba(15,122,90,.24);
+    }
+    .purchase-total-box .label {
+        display: flex; align-items: center; gap: 7px;
+        color: rgba(255,255,255,.78); font-weight: 800; font-size: .9rem;
+    }
+    .purchase-total-box .value {
+        direction: ltr; font-size: 1.8rem; font-weight: 900;
+        line-height: 1; font-family: 'Tajawal', sans-serif;
+    }
+
+    .modal-section-title {
+        display: flex; align-items: center; gap: 8px;
+        margin: 0 0 10px; color: var(--ink); font-weight: 900; font-size: .92rem;
+    }
+    .modal-section-title i { color: var(--brand); }
+
+    .form-hint { margin-top: 5px; color: var(--muted); font-size: .76rem; }
+
+    /* بطاقة نجاح الحفظ */
+    .success-purchase-toast {
+        position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+        background: #065f46; color: #fff;
+        padding: 14px 22px; border-radius: 14px;
+        display: flex; align-items: center; gap: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,.2);
+        z-index: 9999; min-width: 300px;
+        animation: slideUp .35s ease;
+    }
+    @keyframes slideUp { from { opacity:0; transform:translateX(-50%) translateY(20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+    .success-purchase-toast .sp-icon { font-size: 1.4rem; }
+    .success-purchase-toast .sp-text { flex: 1; }
+    .success-purchase-toast .sp-num  { font-weight: 900; font-size: .82rem; opacity: .85; }
+
+    @media (max-width: 768px) {
+        .purchases-toolbar, .purchases-toolbar .btn { width: 100%; }
+        .purchase-total-box { align-items: flex-start; flex-direction: column; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <h3><i class="bi bi-bag-plus" style="color:var(--brand)"></i> المشتريات</h3>
+        <p class="mb-0">تسجيل فواتير الشراء من الموردين وتحديث المخزون تلقائياً</p>
+    </div>
+    <div class="purchases-toolbar">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#purchaseModal"
+                onclick="resetPurchaseForm()">
+            <i class="bi bi-plus-circle me-1"></i> فاتورة شراء جديدة
+        </button>
+    </div>
+</div>
+
+<div class="card purchases-card">
+    <div class="card-header">
+        <span><i class="bi bi-receipt"></i> فواتير الشراء</span>
+        <span class="purchase-count"><i class="bi bi-bag-check"></i> {{ purchases|length }} فاتورة</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>المورد</th>
+                    <th>بواسطة</th>
+                    <th>الإجمالي</th>
+                    <th>التاريخ</th>
+                    <th style="width:80px;text-align:center;">طباعة</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in purchases %}
+            <tr>
+                <td>
+                    <span class="purchase-number">
+                        <i class="bi bi-hash"></i>{{ p.purchase_number }}
+                    </span>
+                </td>
+                <td>
+                    {% if p.supplier_name %}
+                    <div class="supplier-cell">
+                        <div class="supplier-icon"><i class="bi bi-truck"></i></div>
+                        <div>
+                            <div class="cell-title">{{ p.supplier_name }}</div>
+                            <div class="cell-muted">مورد</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <span class="text-muted" style="font-size:.82rem;">بدون مورد</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if p.user_name %}
+                    <div class="user-cell">
+                        <div class="user-icon"><i class="bi bi-person"></i></div>
+                        <div>
+                            <div class="cell-title">{{ p.user_name }}</div>
+                            <div class="cell-muted">مستخدم النظام</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <span class="text-muted" style="font-size:.82rem;">—</span>
+                    {% endif %}
+                </td>
+                <td class="money">{{ "%.3f" % p.total_amount }}</td>
+                <td>
+                    <span class="date-chip">
+                        <i class="bi bi-calendar3"></i>{{ p.created_at }}
+                    </span>
+                </td>
+                <td style="text-align:center;">
+                    <a href="{{ url_for('print_purchase', purchase_id=p.id) }}"
+                       target="_blank"
+                       class="btn btn-sm btn-light"
+                       title="طباعة فاتورة الشراء">
+                        <i class="bi bi-printer"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not purchases %}
+            <tr>
+                <td colspan="6">
+                    <div class="purchases-empty">
+                        <div class="eico"><i class="bi bi-bag-plus"></i></div>
+                        <h6>لا توجد فواتير شراء بعد</h6>
+                        <p>ابدأ بتسجيل أول فاتورة شراء من الزر بالأعلى</p>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- مودال فاتورة الشراء -->
+<div class="modal fade" id="purchaseModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <form id="purchase-form">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2">
+                        <i class="bi bi-bag-plus" style="color:var(--brand)"></i>
+                        فاتورة شراء جديدة
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="purchase-modal-intro">
+                        <h6><i class="bi bi-info-circle"></i> إنشاء فاتورة شراء</h6>
+                        <p>اختر المورد، أضف الأصناف والكميات، وسيتم تحديث المخزون بعد حفظ الفاتورة.</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="modal-section-title">
+                            <i class="bi bi-truck"></i> بيانات المورد
+                        </div>
+                        <label class="form-label">المورد</label>
+                        <select class="form-select" id="pur-supplier">
+                            <option value="">بدون مورد محدد</option>
+                            {% for s in suppliers %}
+                            <option value="{{ s.id }}">{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-hint">يمكن حفظ الفاتورة بدون مورد إذا لم يكن المورد معروفاً.</div>
+                    </div>
+
+                    <div class="items-panel">
+                        <div class="items-panel-head">
+                            <h6><i class="bi bi-box-seam"></i> أصناف الفاتورة</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                    onclick="addPurchaseRow()">
+                                <i class="bi bi-plus me-1"></i> إضافة صنف
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm align-middle purchase-items-table"
+                                   id="purchase-items-table">
+                                <thead>
+                                    <tr>
+                                        <th>المنتج</th>
+                                        <th style="width:110px">الكمية</th>
+                                        <th style="width:130px">سعر الشراء</th>
+                                        <th style="width:120px">الإجمالي</th>
+                                        <th style="width:52px"></th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="purchase-total-box mt-3">
+                        <div class="label">
+                            <i class="bi bi-calculator"></i> إجمالي فاتورة الشراء
+                        </div>
+                        <div class="value" id="purchase-total">0.000</div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i> حفظ الفاتورة
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast نجاح الحفظ -->
+<div id="success-toast" class="success-purchase-toast" style="display:none;">
+    <span class="sp-icon">✅</span>
+    <div class="sp-text">
+        <div style="font-weight:900;">تم حفظ فاتورة الشراء بنجاح!</div>
+        <div class="sp-num" id="toast-pur-num"></div>
+    </div>
+    <a id="toast-print-btn" href="#" target="_blank"
+       class="btn btn-sm"
+       style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);">
+        <i class="bi bi-printer me-1"></i> طباعة
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let rowIndex = 0;
+const ALL_PRODUCTS = {{ all_products|tojson }};
+
+function resetPurchaseForm() {
+    document.getElementById('purchase-form').reset();
+    document.querySelector('#purchase-items-table tbody').innerHTML = '';
+    document.getElementById('pur-supplier').value = '';
+    rowIndex = 0;
+    addPurchaseRow();
+    updatePurchaseTotal();
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.innerText = str || '';
+    return div.innerHTML;
+}
+
+function productOptions(selectedId = '') {
+    return ALL_PRODUCTS.map(p =>
+        `<option value="${p.id}" data-cost="${p.cost_price}"
+         ${p.id == selectedId ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
+    ).join('');
+}
+
+function addPurchaseRow() {
+    const tbody = document.querySelector('#purchase-items-table tbody');
+    const idx   = rowIndex++;
+    const tr    = document.createElement('tr');
+    tr.id = `row-${idx}`;
+    tr.innerHTML = `
+        <td>
+            <select class="form-select form-select-sm product-select"
+                    onchange="onProductChange(${idx})">
+                <option value="">اختر منتج...</option>
+                ${productOptions()}
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm qty-input"
+                   value="1" min="0.01" step="0.01"
+                   oninput="updatePurchaseTotal()" onchange="updatePurchaseTotal()">
+        </td>
+        <td>
+            <input type="number" class="form-control form-control-sm cost-input"
+                   value="0" min="0" step="0.001"
+                   oninput="updatePurchaseTotal()" onchange="updatePurchaseTotal()">
+        </td>
+        <td class="row-total">0.000</td>
+        <td>
+            <button type="button"
+                    class="btn btn-sm btn-outline-danger remove-row-btn"
+                    onclick="document.getElementById('row-${idx}').remove(); updatePurchaseTotal();"
+                    title="حذف الصنف">
+                <i class="bi bi-trash"></i>
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function onProductChange(idx) {
+    const row    = document.getElementById(`row-${idx}`);
+    const select = row.querySelector('.product-select');
+    const cost   = select.options[select.selectedIndex]?.dataset.cost || 0;
+    row.querySelector('.cost-input').value = parseFloat(cost).toFixed(3);
+    updatePurchaseTotal();
+}
+
+function updatePurchaseTotal() {
+    let total = 0;
+    document.querySelectorAll('#purchase-items-table tbody tr').forEach(row => {
+        const qty      = parseFloat(row.querySelector('.qty-input').value)  || 0;
+        const cost     = parseFloat(row.querySelector('.cost-input').value) || 0;
+        const rowTotal = qty * cost;
+        row.querySelector('.row-total').innerText = rowTotal.toFixed(3);
+        total += rowTotal;
+    });
+    document.getElementById('purchase-total').innerText = total.toFixed(3);
+}
+
+document.getElementById('purchase-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const btn         = e.target.querySelector('button[type=submit]');
+    const originalHtml = btn.innerHTML;
+
+    const items = [];
+    document.querySelectorAll('#purchase-items-table tbody tr').forEach(row => {
+        const productId = row.querySelector('.product-select').value;
+        const qty  = parseFloat(row.querySelector('.qty-input').value)  || 0;
+        const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+        if (productId && qty > 0) {
+            items.push({ product_id: productId, quantity: qty, cost_price: cost });
+        }
+    });
+
+    if (items.length === 0) {
+        alert('أضف صنفاً واحداً على الأقل');
+        return;
+    }
+
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري الحفظ...';
+
+    fetch('/api/purchases', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({
+            csrf_token  : CSRF_TOKEN,
+            action      : 'create',
+            supplier_id : document.getElementById('pur-supplier').value,
+            items
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        btn.disabled  = false;
+        btn.innerHTML = originalHtml;
+
+        if (d.success) {
+            // إغلاق المودال
+            bootstrap.Modal.getInstance(document.getElementById('purchaseModal')).hide();
+
+            // إظهار Toast مع رابط الطباعة
+            const toast = document.getElementById('success-toast');
+            document.getElementById('toast-pur-num').innerText   = d.purchase_number;
+            document.getElementById('toast-print-btn').href      = '/print_purchase/' + d.purchase_id;
+            toast.style.display = 'flex';
+
+            // إخفاء الـ Toast بعد 6 ثوان
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity .4s ease';
+                setTimeout(() => {
+                    toast.style.display  = 'none';
+                    toast.style.opacity  = '1';
+                    toast.style.transition = '';
+                }, 400);
+            }, 6000);
+
+            // إعادة تحميل الصفحة لتحديث القائمة
+            setTimeout(() => location.reload(), 500);
+
+        } else {
+            alert(d.message || 'حدث خطأ');
+        }
+    })
+    .catch(() => {
+        btn.disabled  = false;
+        btn.innerHTML = originalHtml;
+        alert('تعذر الاتصال بالخادم');
+    });
+});
+</script>
+{% endblock %}

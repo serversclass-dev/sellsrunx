@@ -1,0 +1,473 @@
+<!-- ==============================================================================
+     FILE: templates/reports.html - التقارير مع ربح صحيح يطرح المرتجعات
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}التقارير{% endblock %}
+{% block page_title %}التقارير{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reports-filter {
+        position: relative; overflow: hidden; border-radius: var(--radius-lg);
+        background:
+            radial-gradient(120% 140% at 100% 0%, rgba(15,122,90,.10) 0%, rgba(15,122,90,0) 55%),
+            radial-gradient(90% 120% at 0% 100%, rgba(181,138,52,.10) 0%, rgba(181,138,52,0) 58%),
+            var(--surface);
+    }
+    .reports-filter::after {
+        content:""; position:absolute; left:-60px; bottom:-80px;
+        width:220px; height:220px; border-radius:50%;
+        background:radial-gradient(circle, rgba(15,122,90,.08), transparent 70%);
+        pointer-events:none;
+    }
+    .reports-filter .card-body { position:relative; z-index:1; }
+
+    .filter-grid { display:grid; grid-template-columns:1fr 1fr auto; gap:14px; align-items:end; }
+    .filter-title { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+    .filter-icon {
+        width:46px; height:46px; flex-shrink:0; border-radius:14px;
+        display:grid; place-items:center;
+        background:var(--brand-050); color:var(--brand); font-size:1.3rem;
+    }
+    .filter-title h6 { margin:0; font-weight:900; color:var(--ink); font-size:1rem; }
+    .filter-title p  { margin:1px 0 0; color:var(--muted); font-size:.82rem; }
+
+    .report-range {
+        display:inline-flex; align-items:center; gap:7px;
+        border-radius:30px; background:var(--surface); border:1px solid var(--border);
+        padding:5px 11px; color:var(--text-2); font-size:.78rem; font-weight:800;
+        box-shadow:var(--shadow-xs);
+    }
+    .report-range i { color:var(--brand); }
+
+    .top-count {
+        display:inline-flex; align-items:center; gap:6px; border-radius:30px;
+        background:var(--brand-050); color:var(--brand-700);
+        padding:4px 11px; font-size:.76rem; font-weight:800;
+    }
+
+    .rank-badge {
+        width:30px; height:30px; border-radius:10px;
+        display:inline-grid; place-items:center;
+        font-size:.8rem; font-weight:900;
+        background:var(--brand-050); color:var(--brand-700);
+    }
+    .rank-badge.r1 { background:linear-gradient(140deg,#f6d98a,#d4a53c); color:#5a4310; }
+    .rank-badge.r2 { background:linear-gradient(140deg,#e4e7eb,#c3c9cf); color:#4a5057; }
+    .rank-badge.r3 { background:linear-gradient(140deg,#f0d0b0,#cf9a6a); color:#5a3a1e; }
+
+    .product-cell { display:flex; align-items:center; gap:11px; min-width:180px; }
+    .product-avatar {
+        width:38px; height:38px; flex-shrink:0; border-radius:11px;
+        display:grid; place-items:center;
+        background:var(--brand-050); color:var(--brand); font-weight:900;
+    }
+    .product-title { color:var(--ink); font-weight:800; }
+    .product-sub   { color:var(--muted); font-size:.75rem; margin-top:1px; }
+
+    .qty-pill {
+        display:inline-flex; align-items:center; gap:6px;
+        border-radius:20px; background:var(--info-050); color:var(--info);
+        padding:4px 11px; font-size:.78rem; font-weight:900;
+    }
+    .ret-pill {
+        display:inline-flex; align-items:center; gap:6px;
+        border-radius:20px; background:#fff7ed; color:#c2410c;
+        padding:4px 11px; font-size:.78rem; font-weight:900;
+    }
+
+    .money     { direction:ltr; text-align:right; font-weight:900; color:var(--ink); font-family:'Tajawal',sans-serif; }
+    .money.neg { color:var(--danger); }
+
+    .reports-empty { padding:58px 20px; text-align:center; color:var(--muted); }
+    .reports-empty .eico {
+        width:66px; height:66px; margin:0 auto 14px; border-radius:18px;
+        display:grid; place-items:center;
+        background:var(--bg); color:var(--muted); font-size:1.85rem;
+    }
+    .reports-empty h6 { margin:0; color:var(--text-2); font-weight:800; }
+    .reports-empty p  { margin:4px 0 0; font-size:.84rem; }
+
+    /* ملخص صافي الفترة */
+    .net-summary-box {
+        background:linear-gradient(135deg, var(--brand-050), #e0f2ec);
+        border:1px solid var(--brand-100); border-radius:var(--radius);
+        padding:18px 22px; display:flex; align-items:center;
+        justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:24px;
+    }
+    .net-summary-box .ns-item { text-align:center; min-width:100px; }
+    .net-summary-box .ns-label { font-size:.78rem; color:var(--muted); font-weight:700; margin-bottom:4px; }
+    .net-summary-box .ns-val   { font-size:1.25rem; font-weight:900; color:var(--ink); direction:ltr; }
+    .net-summary-box .ns-val.green { color:var(--success); }
+    .net-summary-box .ns-val.red   { color:var(--danger); }
+    .net-summary-box .ns-val.blue  { color:#1d4ed8; }
+    .net-summary-box .ns-val.brand { color:var(--brand); }
+
+    .ns-divider { width:1px; height:50px; background:var(--border-strong); }
+    .ns-op { font-size:1.4rem; color:var(--muted); font-weight:300; }
+
+    /* فاصل القسمين */
+    .section-divider {
+        display:flex; align-items:center; gap:12px;
+        margin:28px 0 16px; font-weight:900; font-size:1rem; color:var(--ink);
+    }
+    .section-divider::before, .section-divider::after {
+        content:""; flex:1; height:1px; background:var(--border);
+    }
+    .section-divider i { color:#ea580c; }
+
+    /* سجل المرتجعات */
+    .return-row-badge {
+        display:inline-flex; align-items:center; gap:5px;
+        border-radius:20px; padding:3px 9px; font-size:.73rem; font-weight:800;
+    }
+    .ret-partial { background:#fff7ed; color:#c2410c; }
+    .ret-full    { background:#fef2f2; color:#b91c1c; }
+
+    /* تحليل الربح */
+    .profit-breakdown {
+        border:1px solid var(--border); border-radius:var(--radius);
+        padding:14px 18px; background:var(--surface-2); margin-bottom:20px;
+        font-size:.84rem;
+    }
+    .profit-breakdown .pb-row {
+        display:flex; justify-content:space-between; align-items:center;
+        padding:4px 0; border-bottom:1px dotted var(--border);
+    }
+    .profit-breakdown .pb-row:last-child { border-bottom:none; font-weight:900; font-size:.95rem; }
+    .profit-breakdown .pb-label { color:var(--text-2); font-weight:700; }
+    .profit-breakdown .pb-val   { font-weight:900; direction:ltr; }
+
+    @media (max-width:768px) {
+        .filter-grid { grid-template-columns:1fr; }
+        .filter-grid .btn { width:100%; }
+        .net-summary-box { flex-direction:column; align-items:flex-start; }
+        .ns-divider { display:none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-end gap-2">
+    <div>
+        <h3><i class="bi bi-graph-up-arrow" style="color:var(--brand)"></i> التقارير</h3>
+        <p class="mb-0">تحليل شامل للمبيعات والمرتجعات والربح التقديري خلال فترة محددة</p>
+    </div>
+    <div class="report-range">
+        <i class="bi bi-calendar-range"></i>
+        <span>{{ from_date }} إلى {{ to_date }}</span>
+    </div>
+</div>
+
+<!-- فلتر التاريخ -->
+<form method="GET" action="{{ url_for('reports') }}" class="card reports-filter mb-4">
+    <div class="card-body">
+        <div class="filter-title">
+            <div class="filter-icon"><i class="bi bi-sliders"></i></div>
+            <div>
+                <h6>فلترة التقرير</h6>
+                <p>اختر الفترة التي تريد تحليل المبيعات والمرتجعات والربح خلالها</p>
+            </div>
+        </div>
+        <div class="filter-grid">
+            <div>
+                <label class="form-label">من تاريخ</label>
+                <input type="date" name="from" class="form-control" value="{{ from_date }}">
+            </div>
+            <div>
+                <label class="form-label">إلى تاريخ</label>
+                <input type="date" name="to" class="form-control" value="{{ to_date }}">
+            </div>
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-search me-1"></i> عرض التقرير
+            </button>
+        </div>
+    </div>
+</form>
+
+<!-- ملخص صافي الفترة -->
+{% set total_refund = returns_summary.total_refund if returns_summary else 0 %}
+{% set net_sales    = summary.total_sales - total_refund %}
+
+<div class="net-summary-box">
+    <div class="ns-item">
+        <div class="ns-label">إجمالي المبيعات</div>
+        <div class="ns-val blue">{{ "%.3f" % summary.total_sales }}</div>
+    </div>
+    <div class="ns-op">−</div>
+    <div class="ns-item">
+        <div class="ns-label">إجمالي المرتجعات</div>
+        <div class="ns-val red">{{ "%.3f" % total_refund }}</div>
+    </div>
+    <div class="ns-op">=</div>
+    <div class="ns-item">
+        <div class="ns-label">صافي المبيعات الفعلي</div>
+        <div class="ns-val green">{{ "%.3f" % net_sales }}</div>
+    </div>
+    <div class="ns-divider"></div>
+    <div class="ns-item">
+        <div class="ns-label">الربح التقديري (بعد المرتجعات)</div>
+        <div class="ns-val brand">{{ "%.3f" % summary.profit }}</div>
+    </div>
+</div>
+
+<!-- بطاقات المبيعات الأربع -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card v-brand">
+            <div class="stat-top">
+                <div>
+                    <p class="label">إجمالي المبيعات</p>
+                    <h2>{{ "%.3f" % summary.total_sales }}</h2>
+                </div>
+                <div class="stat-ico ico-brand"><i class="bi bi-cash-coin"></i></div>
+            </div>
+            <span class="trend up"><i class="bi bi-calendar-check"></i> خلال الفترة</span>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card v-info">
+            <div class="stat-top">
+                <div>
+                    <p class="label">عدد الفواتير</p>
+                    <h2>{{ summary.total_invoices }}</h2>
+                </div>
+                <div class="stat-ico ico-info"><i class="bi bi-receipt"></i></div>
+            </div>
+            <span class="trend flat"><i class="bi bi-receipt-cutoff"></i> فاتورة</span>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card v-gold">
+            <div class="stat-top">
+                <div>
+                    <p class="label">الربح التقديري</p>
+                    <h2>{{ "%.3f" % summary.profit }}</h2>
+                </div>
+                <div class="stat-ico ico-gold"><i class="bi bi-graph-up"></i></div>
+            </div>
+            <span class="trend up"><i class="bi bi-arrow-up-short"></i> بعد خصم المرتجعات</span>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="stat-card" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1px solid #fed7aa;">
+            <div class="stat-top">
+                <div>
+                    <p class="label" style="color:#92400e;">إجمالي المرتجعات</p>
+                    <h2 style="color:#c2410c;">{{ "%.3f" % total_refund }}</h2>
+                </div>
+                <div class="stat-ico" style="background:#fff7ed;color:#ea580c;border:1px solid #fed7aa;">
+                    <i class="bi bi-arrow-return-right"></i>
+                </div>
+            </div>
+            <span class="trend flat" style="color:#92400e;">
+                <i class="bi bi-receipt-cutoff"></i>
+                {{ returns_summary.return_count if returns_summary else 0 }} عملية إرجاع
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- تفصيل الربح -->
+{% if summary.total_sales > 0 %}
+<div class="profit-breakdown mb-4">
+    <div class="pb-row">
+        <span class="pb-label"><i class="bi bi-cash-coin me-1" style="color:var(--brand);"></i> إجمالي المبيعات</span>
+        <span class="pb-val" style="color:var(--info);">{{ "%.3f" % summary.total_sales }}</span>
+    </div>
+    <div class="pb-row">
+        <span class="pb-label"><i class="bi bi-arrow-return-right me-1" style="color:#ea580c;"></i> إجمالي المرتجعات</span>
+        <span class="pb-val" style="color:var(--danger);">− {{ "%.3f" % total_refund }}</span>
+    </div>
+    <div class="pb-row">
+        <span class="pb-label"><i class="bi bi-check2-circle me-1" style="color:var(--success);"></i> صافي المبيعات الفعلي</span>
+        <span class="pb-val" style="color:var(--success);">{{ "%.3f" % net_sales }}</span>
+    </div>
+    <div class="pb-row" style="margin-top:4px;padding-top:8px;border-top:1px solid var(--border-strong)!important;">
+        <span class="pb-label"><i class="bi bi-graph-up me-1" style="color:var(--gold);"></i> الربح التقديري الصافي</span>
+        <span class="pb-val" style="color:var(--brand);font-size:1.05rem;">{{ "%.3f" % summary.profit }}</span>
+    </div>
+</div>
+{% endif %}
+
+<!-- الأكثر مبيعاً (صافي بعد المرتجعات) -->
+<div class="card mb-4">
+    <div class="card-header justify-content-between">
+        <span><i class="bi bi-trophy"></i> الأكثر مبيعاً خلال الفترة (صافي بعد المرتجعات)</span>
+        {% if top_products %}
+        <span class="top-count"><i class="bi bi-stars"></i> {{ top_products|length }} منتج</span>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>المنتج</th>
+                    <th>الكمية الصافية</th>
+                    <th>إجمالي المبيعات الصافي</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in top_products %}
+            <tr>
+                <td><span class="rank-badge r{{ loop.index }}">{{ loop.index }}</span></td>
+                <td>
+                    <div class="product-cell">
+                        <div class="product-avatar">{{ p.name[:1] if p.name else '?' }}</div>
+                        <div>
+                            <div class="product-title">{{ p.name }}</div>
+                            <div class="product-sub">مبيعات صافية خلال الفترة</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="qty-pill"><i class="bi bi-box-seam"></i>{{ "%.2f"|format(p.total_qty) }}</span></td>
+                <td class="money">{{ "%.3f" % p.total_sales }}</td>
+            </tr>
+            {% endfor %}
+            {% if not top_products %}
+            <tr><td colspan="4">
+                <div class="reports-empty">
+                    <div class="eico"><i class="bi bi-bar-chart-line"></i></div>
+                    <h6>لا توجد بيانات مبيعات ضمن هذه الفترة</h6>
+                    <p>جرّب اختيار فترة مختلفة أو تأكد من وجود فواتير مكتملة</p>
+                </div>
+            </td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== قسم المرتجعات ==================== -->
+<div class="section-divider">
+    <i class="bi bi-arrow-return-right"></i> تقرير المرتجعات التفصيلي
+</div>
+
+{% if top_returned %}
+<div class="card mb-4">
+    <div class="card-header">
+        <span><i class="bi bi-arrow-return-right" style="color:#ea580c;"></i> أكثر المنتجات المُرجَعة</span>
+        <span class="top-count" style="background:#fff7ed;color:#c2410c;">
+            <i class="bi bi-box-seam"></i> {{ top_returned|length }} منتج
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>المنتج</th>
+                    <th>الكمية المرتجعة</th>
+                    <th>قيمة المرتجع</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in top_returned %}
+            <tr>
+                <td>
+                    <span class="rank-badge" style="background:#fff7ed;color:#c2410c;">{{ loop.index }}</span>
+                </td>
+                <td>
+                    <div class="product-cell">
+                        <div class="product-avatar" style="background:#fff7ed;color:#ea580c;">
+                            {{ p.product_name[:1] if p.product_name else '?' }}
+                        </div>
+                        <div>
+                            <div class="product-title">{{ p.product_name }}</div>
+                            <div class="product-sub">منتج مرتجع خلال الفترة</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="ret-pill">
+                        <i class="bi bi-arrow-return-right"></i>{{ "%.2f" % p.total_qty }}
+                    </span>
+                </td>
+                <td class="money neg">{{ "%.3f" % p.total_refund }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- سجل عمليات الإرجاع -->
+<div class="card">
+    <div class="card-header justify-content-between">
+        <span><i class="bi bi-list-check"></i> سجل عمليات الإرجاع</span>
+        {% if returns_list %}
+        <span class="top-count" style="background:#fff7ed;color:#c2410c;">
+            {{ returns_list|length }} عملية
+        </span>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>رقم المرتجع</th>
+                    <th>الفاتورة الأصلية</th>
+                    <th>الكاشير</th>
+                    <th>النوع</th>
+                    <th>قيمة المرتجع</th>
+                    <th>السبب</th>
+                    <th>التاريخ</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in returns_list %}
+            <tr>
+                <td style="font-family:monospace;font-weight:800;direction:ltr;font-size:.82rem;">
+                    {{ r.return_number }}
+                </td>
+                <td>
+                    <a href="{{ url_for('print_invoice', invoice_id=r.invoice_id) }}"
+                       style="font-family:monospace;font-weight:700;direction:ltr;font-size:.8rem;color:var(--brand);">
+                        {{ r.invoice_number }}
+                    </a>
+                </td>
+                <td style="font-size:.88rem;">{{ r.cashier_name }}</td>
+                <td>
+                    {% if r.is_partial %}
+                    <span class="return-row-badge ret-partial">
+                        <i class="bi bi-scissors"></i> جزئي
+                    </span>
+                    {% else %}
+                    <span class="return-row-badge ret-full">
+                        <i class="bi bi-arrow-counterclockwise"></i> كلي
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="money neg">{{ "%.3f" % r.total_refund }}</td>
+                <td style="font-size:.82rem;color:var(--muted);max-width:140px;white-space:normal;">
+                    {{ r.reason or '—' }}
+                </td>
+                <td style="font-size:.8rem;color:var(--muted);white-space:nowrap;">
+                    {{ r.created_at }}
+                </td>
+                <td>
+                    <a href="{{ url_for('print_return', return_id=r.id) }}"
+                       class="btn btn-sm btn-light" title="طباعة إيصال المرتجع">
+                        <i class="bi bi-printer"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not returns_list %}
+            <tr><td colspan="8">
+                <div class="reports-empty">
+                    <div class="eico"><i class="bi bi-arrow-return-right"></i></div>
+                    <h6>لا توجد عمليات إرجاع خلال هذه الفترة</h6>
+                    <p>جيد! لا مرتجعات في هذه الفترة 🎉</p>
+                </div>
+            </td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

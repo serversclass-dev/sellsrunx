@@ -1,0 +1,610 @@
+<!-- ==============================================================================
+     FILE: templates/products.html - إدارة المنتجات مع صلاحية المنتجات وتاريخ الانتهاء
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}المنتجات{% endblock %}
+{% block page_title %}المنتجات{% endblock %}
+
+{% block extra_css %}
+<style>
+    .products-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .search-wrap {
+        position: relative;
+        width: min(330px, 100%);
+    }
+
+    .search-wrap i {
+        position: absolute;
+        top: 50%;
+        right: 13px;
+        transform: translateY(-50%);
+        color: var(--muted);
+        pointer-events: none;
+    }
+
+    .search-wrap .form-control {
+        padding-right: 40px;
+        background: var(--surface);
+        min-height: 42px;
+    }
+
+    .products-card { overflow: hidden; }
+    .products-card .card-header { justify-content: space-between; }
+
+    .products-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 30px;
+        background: var(--brand-050);
+        color: var(--brand-700);
+        padding: 4px 11px;
+        font-size: .76rem;
+        font-weight: 800;
+    }
+
+    .readonly-notice {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-radius: var(--radius);
+        background: linear-gradient(135deg, rgba(245,158,11,.08), rgba(245,158,11,.04));
+        border: 1px solid rgba(245,158,11,.25);
+        color: #92600a;
+        font-size: .86rem;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+
+    .readonly-notice i { font-size: 1.1rem; color: #d97706; flex-shrink: 0; }
+
+    .products-table th,
+    .products-table td { white-space: nowrap; }
+
+    .products-table th:nth-child(2),
+    .products-table td:nth-child(2) { white-space: normal; min-width: 200px; }
+
+    .barcode-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        direction: ltr;
+        border-radius: 20px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text-2);
+        padding: 3px 9px;
+        font-size: .76rem;
+        font-weight: 800;
+        font-family: 'Tajawal', ui-monospace, monospace;
+    }
+
+    .product-name-cell { display: flex; align-items: center; gap: 11px; }
+
+    .product-avatar {
+        width: 38px; height: 38px; flex-shrink: 0;
+        border-radius: 11px; display: grid; place-items: center;
+        background: var(--brand-050); color: var(--brand);
+        font-weight: 900; font-size: .9rem;
+    }
+
+    .product-title { font-weight: 800; color: var(--ink); }
+    .product-sub { color: var(--muted); font-size: .75rem; margin-top: 1px; }
+
+    .category-pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        border-radius: 20px; background: var(--info-050); color: var(--info);
+        padding: 3px 10px; font-size: .75rem; font-weight: 800;
+    }
+
+    .muted-pill {
+        display: inline-flex; align-items: center;
+        border-radius: 20px; background: var(--bg); color: var(--muted);
+        padding: 3px 10px; font-size: .75rem; font-weight: 700;
+    }
+
+    .money { direction: ltr; text-align: right; font-weight: 800; color: var(--ink); font-family: 'Tajawal', sans-serif; }
+    .money.cost { color: var(--text-2); }
+
+    .qty-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        min-width: 64px; justify-content: center;
+        border-radius: 20px; padding: 4px 10px;
+        font-weight: 900; font-size: .78rem;
+        background: var(--success-050); color: var(--success);
+    }
+    .qty-badge.low { background: var(--warning-050); color: var(--warning); }
+
+    /* تاريخ الانتهاء */
+    .expiry-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        border-radius: 20px; padding: 4px 10px;
+        font-weight: 800; font-size: .75rem;
+        white-space: nowrap;
+    }
+    .expiry-badge.ok      { background: var(--success-050); color: var(--success); }
+    .expiry-badge.soon    { background: var(--warning-050); color: var(--warning); }
+    .expiry-badge.expired { background: var(--danger-050);  color: var(--danger);  }
+    .expiry-badge.none    { background: var(--bg); color: var(--muted); }
+
+    .status-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        border-radius: 20px; padding: 4px 10px;
+        font-weight: 800; font-size: .74rem;
+    }
+    .status-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+    .status-badge.active  { background: var(--success-050); color: var(--success); }
+    .status-badge.active::before  { background: var(--success); }
+    .status-badge.inactive { background: var(--bg); color: var(--muted); }
+    .status-badge.inactive::before { background: var(--muted); }
+
+    .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+
+    .icon-btn {
+        width: 34px; height: 34px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid transparent; background: transparent;
+        border-radius: 10px; color: var(--muted); font-size: .95rem;
+        transition: all .15s ease;
+    }
+    .icon-btn:hover { background: var(--brand-050); color: var(--brand); border-color: var(--brand-100); }
+    .icon-btn.danger:hover { background: var(--danger-050); color: var(--danger); border-color: #f0c8cf; }
+
+    .products-empty { padding: 58px 20px; text-align: center; color: var(--muted); }
+    .products-empty .eico {
+        width: 66px; height: 66px; margin: 0 auto 14px;
+        border-radius: 18px; display: grid; place-items: center;
+        background: var(--bg); color: var(--muted); font-size: 1.85rem;
+    }
+    .products-empty h6 { margin: 0; color: var(--text-2); font-weight: 800; }
+    .products-empty p  { margin: 4px 0 0; font-size: .84rem; }
+
+    .modal-section-title {
+        display: flex; align-items: center; gap: 8px;
+        margin: 4px 0 12px; color: var(--ink); font-weight: 900; font-size: .92rem;
+    }
+    .modal-section-title i { color: var(--brand); }
+
+    .form-hint { margin-top: 5px; font-size: .76rem; color: var(--muted); }
+
+    .active-switch-card {
+        width: 100%; min-height: 44px;
+        border: 1px solid var(--border); border-radius: 12px;
+        background: var(--surface-2); padding: 10px 12px;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .active-switch-card label { font-weight: 800; color: var(--text-2); }
+    .form-switch .form-check-input { width: 2.6em; height: 1.35em; cursor: pointer; }
+    .form-switch .form-check-input:checked { background-color: var(--brand); border-color: var(--brand); }
+
+    @media (max-width: 768px) {
+        .products-toolbar, .search-wrap { width: 100%; }
+        .products-toolbar .btn { width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        <h3><i class="bi bi-box-seam" style="color:var(--brand)"></i> المنتجات</h3>
+        <p class="mb-0">
+            {% if can_manage_products %}إدارة المنتجات والأسعار والمخزون وتاريخ الانتهاء
+            {% else %}عرض المنتجات والأسعار والمخزون{% endif %}
+        </p>
+    </div>
+    <div class="products-toolbar">
+        <div class="search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" id="search-input" class="form-control" placeholder="بحث بالاسم أو الباركود...">
+        </div>
+        {% if can_manage_products %}
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal" onclick="openCreateModal()">
+            <i class="bi bi-plus-circle me-1"></i> منتج جديد
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+{% if not can_manage_products %}
+<div class="readonly-notice">
+    <i class="bi bi-lock"></i>
+    <span>أنت في وضع العرض فقط — لا تملك صلاحية إضافة المنتجات أو تعديلها. تواصل مع المدير لتفعيل صلاحية إدارة المنتجات.</span>
+</div>
+{% endif %}
+
+<div class="card products-card">
+    <div class="card-header">
+        <span><i class="bi bi-boxes"></i> قائمة المنتجات</span>
+        <span class="products-count"><i class="bi bi-box-seam"></i> {{ products|length }} منتج</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 products-table" id="products-table">
+            <thead>
+                <tr>
+                    <th>الباركود</th>
+                    <th>المنتج</th>
+                    <th>التصنيف</th>
+                    <th>الشراء</th>
+                    <th>البيع</th>
+                    <th>الكمية</th>
+                    <th>تاريخ الانتهاء</th>
+                    <th>الحالة</th>
+                    {% if can_manage_products %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in products %}
+                <tr class="{% if p.quantity is not none and p.min_quantity is not none and p.quantity <= p.min_quantity %}low-stock-row{% endif %}"
+                    data-search="{{ (p.name + ' ' + (p.barcode or '')).lower() }}">
+                    <td>
+                        {% if p.barcode %}
+                        <span class="barcode-chip"><i class="bi bi-upc"></i>{{ p.barcode }}</span>
+                        {% else %}
+                        <span class="muted-pill">بدون باركود</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="product-name-cell">
+                            <div class="product-avatar">{{ p.name[:1] if p.name else '?' }}</div>
+                            <div>
+                                <div class="product-title">{{ p.name }}</div>
+                                <div class="product-sub">{{ p.unit or 'قطعة' }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if p.category_name %}
+                        <span class="category-pill"><i class="bi bi-tag"></i>{{ p.category_name }}</span>
+                        {% else %}
+                        <span class="muted-pill">بدون تصنيف</span>
+                        {% endif %}
+                    </td>
+                    <td class="money cost">{{ "%.3f" % (p.cost_price or 0) }}</td>
+                    <td class="money">{{ "%.3f" % (p.sell_price or 0) }}</td>
+                    <td>
+                        <span class="qty-badge {% if p.quantity is not none and p.min_quantity is not none and p.quantity <= p.min_quantity %}low{% endif %}">
+                            <i class="bi bi-box"></i>{{ p.quantity or 0 }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if p.expiry_date %}
+                            <span class="expiry-badge" data-expiry="{{ p.expiry_date }}">
+                                <i class="bi bi-calendar-event"></i>{{ p.expiry_date }}
+                            </span>
+                        {% else %}
+                            <span class="expiry-badge none"><i class="bi bi-dash"></i> غير محدد</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.is_active %}
+                        <span class="status-badge active">مفعّل</span>
+                        {% else %}
+                        <span class="status-badge inactive">معطّل</span>
+                        {% endif %}
+                    </td>
+                    {% if can_manage_products %}
+                    <td>
+                        <div class="row-actions">
+                            <a href="{{ url_for('product_movements', product_id=p.id) }}"
+                               class="icon-btn" title="حركة المنتج">
+                                <i class="bi bi-graph-up-arrow"></i>
+                            </a>
+                            <button class="icon-btn" title="تعديل" onclick='openEditModal({{ p|tojson }})'>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="icon-btn danger" title="حذف" onclick="deleteProduct({{ p.id }}, '{{ p.name|escape }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+            {% if not products %}
+                <tr>
+                    <td colspan="{{ 9 if can_manage_products else 8 }}">
+                        <div class="products-empty">
+                            <div class="eico"><i class="bi bi-box-seam"></i></div>
+                            <h6>لا توجد منتجات بعد</h6>
+                            <p>{% if can_manage_products %}ابدأ بإضافة أول منتج من زر "منتج جديد"{% else %}لا توجد منتجات مضافة في النظام حتى الآن{% endif %}</p>
+                        </div>
+                    </td>
+                </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if can_manage_products %}
+<!-- مودال إضافة/تعديل منتج -->
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="product-form">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="productModalTitle">
+                        <i class="bi bi-box-seam" style="color:var(--brand)"></i> منتج جديد
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="p-id" name="id">
+
+                    <div class="modal-section-title">
+                        <i class="bi bi-info-circle"></i> البيانات الأساسية
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">اسم المنتج *</label>
+                            <input type="text" class="form-control" id="p-name" name="name" placeholder="مثال: عصير برتقال" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">الباركود</label>
+                            <input type="text" class="form-control" id="p-barcode" name="barcode" placeholder="امسح أو اكتب الباركود">
+                            <div class="form-hint">يمكن تركه فارغاً إذا كان المنتج بدون باركود.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">التصنيف</label>
+                            <select class="form-select" id="p-category" name="category_id">
+                                <option value="">بدون تصنيف</option>
+                                {% for c in categories %}
+                                <option value="{{ c.id }}">{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">وحدة القياس</label>
+                            <input type="text" class="form-control" id="p-unit" name="unit" value="قطعة">
+                        </div>
+                    </div>
+
+                    <div class="modal-section-title">
+                        <i class="bi bi-cash-stack"></i> الأسعار والمخزون
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">سعر الشراء</label>
+                            <input type="number" step="0.001" min="0" class="form-control" id="p-cost" name="cost_price" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">سعر البيع *</label>
+                            <input type="number" step="0.001" min="0" class="form-control" id="p-sell" name="sell_price" required value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">الكمية الحالية</label>
+                            <input type="number" step="0.01" class="form-control" id="p-qty" name="quantity" value="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">حد التنبيه الأدنى</label>
+                            <input type="number" step="0.01" class="form-control" id="p-min" name="min_quantity" value="5">
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="active-switch-card">
+                                <label class="form-check-label" for="p-active">
+                                    <i class="bi bi-toggle-on" style="color:var(--brand)"></i> منتج مفعّل
+                                </label>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" id="p-active" name="is_active" checked>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-section-title">
+                        <i class="bi bi-calendar-event"></i> تاريخ الانتهاء
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">تاريخ انتهاء الصلاحية</label>
+                            <input type="date" class="form-control" id="p-expiry" name="expiry_date">
+                            <div class="form-hint">اتركه فارغاً إذا لم يكن للمنتج تاريخ انتهاء.</div>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div id="expiry-preview" class="w-100" style="display:none!important;">
+                                <div class="alert mb-0 py-2 px-3" id="expiry-alert" role="alert" style="font-size:.84rem;font-weight:800;border-radius:12px;">
+                                    <i class="bi me-1" id="expiry-icon"></i><span id="expiry-msg"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i> حفظ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CAN_MANAGE = {{ 'true' if can_manage_products else 'false' }};
+
+// ===== تلوين شارات تاريخ الانتهاء =====
+function colorizeExpiry() {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const soon = new Date(today);
+    soon.setDate(soon.getDate() + 30);
+
+    document.querySelectorAll('.expiry-badge[data-expiry]').forEach(el => {
+        const d = new Date(el.dataset.expiry);
+        if (isNaN(d)) return;
+        if (d < today) {
+            el.classList.add('expired');
+            el.title = 'منتهي الصلاحية!';
+        } else if (d <= soon) {
+            el.classList.add('soon');
+            el.title = 'ينتهي قريباً';
+        } else {
+            el.classList.add('ok');
+        }
+    });
+}
+colorizeExpiry();
+
+// ===== معاينة تاريخ الانتهاء في المودال =====
+{% if can_manage_products %}
+const productModal = new bootstrap.Modal(document.getElementById('productModal'));
+
+document.getElementById('p-expiry').addEventListener('change', function() {
+    const preview = document.getElementById('expiry-preview');
+    const alertEl = document.getElementById('expiry-alert');
+    const icon    = document.getElementById('expiry-icon');
+    const msg     = document.getElementById('expiry-msg');
+
+    if (!this.value) {
+        preview.style.setProperty('display', 'none', 'important');
+        return;
+    }
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const soon  = new Date(today); soon.setDate(soon.getDate() + 30);
+    const d     = new Date(this.value);
+
+    preview.style.removeProperty('display');
+    alertEl.className = 'alert mb-0 py-2 px-3';
+
+    if (d < today) {
+        alertEl.classList.add('alert-danger');
+        icon.className = 'bi bi-exclamation-triangle-fill me-1';
+        msg.textContent = 'تحذير: هذا التاريخ قد مضى — المنتج منتهي الصلاحية!';
+    } else if (d <= soon) {
+        alertEl.classList.add('alert-warning');
+        icon.className = 'bi bi-clock-history me-1';
+        msg.textContent = 'تنبيه: ينتهي خلال 30 يوماً أو أقل.';
+    } else {
+        alertEl.classList.add('alert-success');
+        icon.className = 'bi bi-check-circle-fill me-1';
+        msg.textContent = 'صالح — التاريخ مناسب.';
+    }
+});
+
+function openCreateModal() {
+    document.getElementById('product-form').reset();
+    document.getElementById('p-id').value = '';
+    document.getElementById('productModalTitle').innerHTML =
+        '<i class="bi bi-box-seam" style="color:var(--brand)"></i> منتج جديد';
+    document.getElementById('p-active').checked = true;
+    document.getElementById('expiry-preview').style.setProperty('display','none','important');
+}
+
+function openEditModal(p) {
+    document.getElementById('productModalTitle').innerHTML =
+        '<i class="bi bi-pencil-square" style="color:var(--brand)"></i> تعديل منتج: ' + escapeHtml(p.name);
+    document.getElementById('p-id').value      = p.id;
+    document.getElementById('p-name').value    = p.name;
+    document.getElementById('p-barcode').value = p.barcode || '';
+    document.getElementById('p-category').value= p.category_id || '';
+    document.getElementById('p-unit').value    = p.unit || 'قطعة';
+    document.getElementById('p-cost').value    = p.cost_price;
+    document.getElementById('p-sell').value    = p.sell_price;
+    document.getElementById('p-qty').value     = p.quantity || 0;
+    document.getElementById('p-min').value     = p.min_quantity || 5;
+    document.getElementById('p-active').checked= !!p.is_active;
+    document.getElementById('p-expiry').value  = p.expiry_date || '';
+
+    // trigger expiry preview
+    document.getElementById('p-expiry').dispatchEvent(new Event('change'));
+    productModal.show();
+}
+
+document.getElementById('product-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type=submit]');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري الحفظ...';
+
+    const id = document.getElementById('p-id').value;
+    const payload = {
+        csrf_token  : CSRF_TOKEN,
+        id          : id,
+        name        : document.getElementById('p-name').value,
+        barcode     : document.getElementById('p-barcode').value,
+        category_id : document.getElementById('p-category').value,
+        unit        : document.getElementById('p-unit').value,
+        cost_price  : document.getElementById('p-cost').value,
+        sell_price  : document.getElementById('p-sell').value,
+        quantity    : document.getElementById('p-qty').value,
+        min_quantity: document.getElementById('p-min').value,
+        is_active   : document.getElementById('p-active').checked ? 1 : 0,
+        expiry_date : document.getElementById('p-expiry').value || null,
+        action      : id ? 'update' : 'add'
+    };
+
+    fetch('/api/products', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        if (data.success) location.reload();
+        else alert(data.message || 'حدث خطأ');
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        alert('تعذر الاتصال بالخادم');
+    });
+});
+
+function deleteProduct(id, name) {
+    if (!confirm('هل تريد حذف المنتج "' + name + '"؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+    fetch('/api/products', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ csrf_token: CSRF_TOKEN, action: 'delete', id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            if (data.message && data.message.includes('تعطيل')) {
+                alert(data.message);
+            }
+            location.reload();
+        } else {
+            alert(data.message || 'تعذر الحذف');
+        }
+    });
+}
+{% endif %}
+
+document.getElementById('search-input').addEventListener('input', function() {
+    const term = this.value.trim().toLowerCase();
+    document.querySelectorAll('#products-table tbody tr[data-search]').forEach(row => {
+        row.style.display = row.dataset.search.includes(term) ? '' : 'none';
+    });
+});
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.innerText = str || '';
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

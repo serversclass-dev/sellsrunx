@@ -1,0 +1,513 @@
+<!-- ==============================================================================
+     FILE: templates/settings.html - الإعدادات (محدث مع العُهدة)
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}الإعدادات{% endblock %}
+{% block page_title %}الإعدادات{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-layout {
+        max-width: 1040px;
+    }
+
+    .settings-hero {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background:
+            radial-gradient(120% 140% at 100% 0%, rgba(15,122,90,.10) 0%, rgba(15,122,90,0) 55%),
+            radial-gradient(90% 120% at 0% 100%, rgba(181,138,52,.10) 0%, rgba(181,138,52,0) 58%),
+            linear-gradient(180deg, var(--surface), var(--surface-2));
+        box-shadow: var(--shadow-sm);
+        padding: 24px 26px;
+        margin-bottom: 18px;
+    }
+
+    .settings-hero::after {
+        content: "";
+        position: absolute;
+        left: -60px;
+        bottom: -80px;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(15,122,90,.08), transparent 70%);
+        pointer-events: none;
+    }
+
+    .settings-hero-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .settings-hero-icon {
+        width: 58px;
+        height: 58px;
+        flex-shrink: 0;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        font-size: 1.55rem;
+        color: #fff;
+        background: linear-gradient(140deg, var(--brand), var(--brand-700));
+        box-shadow: 0 6px 18px rgba(15,122,90,.32), inset 0 1px 0 rgba(255,255,255,.25);
+    }
+
+    .settings-hero h6 {
+        margin: 0;
+        color: var(--ink);
+        font-weight: 900;
+        font-size: 1.08rem;
+    }
+
+    .settings-hero p {
+        margin: 5px 0 0;
+        color: var(--text-2);
+        font-size: .9rem;
+        max-width: 58ch;
+    }
+
+    .settings-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .meta-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 5px 11px;
+        border-radius: 30px;
+        font-size: .78rem;
+        font-weight: 700;
+        color: var(--text-2);
+        box-shadow: var(--shadow-xs);
+    }
+
+    .meta-pill i {
+        color: var(--brand);
+    }
+
+    .settings-card {
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+
+    .settings-card .card-header {
+        justify-content: space-between;
+    }
+
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 2px 0 14px;
+        color: var(--ink);
+        font-weight: 900;
+        font-size: .94rem;
+    }
+
+    .section-title i {
+        color: var(--brand);
+    }
+
+    .input-icon-wrap {
+        position: relative;
+    }
+
+    .input-icon-wrap > i {
+        position: absolute;
+        top: 50%;
+        right: 13px;
+        transform: translateY(-50%);
+        color: var(--muted);
+        pointer-events: none;
+        font-size: .98rem;
+    }
+
+    .input-icon-wrap .form-control {
+        padding-right: 40px;
+        background: var(--surface-2);
+    }
+
+    .input-icon-wrap .form-control:focus {
+        background: #fff;
+    }
+
+    .currency-input {
+        direction: ltr;
+        text-align: left;
+        font-weight: 800;
+        font-family: 'Tajawal', sans-serif;
+    }
+
+    .form-hint {
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: .76rem;
+    }
+
+    .settings-switch-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background:
+            radial-gradient(90% 120% at 100% 0%, rgba(15,122,90,.07), transparent 55%),
+            var(--surface-2);
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+    }
+
+    .switch-info {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .switch-icon {
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        border-radius: 13px;
+        display: grid;
+        place-items: center;
+        font-size: 1.15rem;
+    }
+
+    .switch-icon.warning { background: var(--warning-050); color: var(--warning); }
+    .switch-icon.brand { background: var(--brand-050); color: var(--brand); }
+    .switch-icon.danger { background: var(--danger-050); color: var(--danger); }
+    .switch-icon.info { background: var(--info-050); color: var(--info); }
+
+    .switch-info h6 {
+        margin: 0;
+        color: var(--ink);
+        font-weight: 900;
+        font-size: .94rem;
+    }
+
+    .switch-info p {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: .82rem;
+    }
+
+    .settings-switch-card .form-check-input {
+        width: 3em;
+        height: 1.55em;
+        cursor: pointer;
+    }
+
+    .settings-switch-card .form-check-input:checked {
+        background-color: var(--brand);
+        border-color: var(--brand);
+    }
+
+    .preview-card {
+        border-radius: var(--radius-lg);
+        position: sticky;
+        top: 78px;
+    }
+
+    .preview-receipt {
+        border: 1px dashed var(--border-strong);
+        border-radius: 18px;
+        background: #fff;
+        padding: 18px;
+        text-align: center;
+        box-shadow: var(--shadow-xs);
+    }
+
+    .preview-store {
+        margin: 0;
+        font-weight: 900;
+        color: var(--ink);
+        font-size: 1.15rem;
+    }
+
+    .preview-line {
+        margin: 7px 0;
+        border-bottom: 1px dashed var(--border-strong);
+    }
+
+    .preview-meta {
+        color: var(--muted);
+        font-size: .8rem;
+        margin: 2px 0;
+    }
+
+    .preview-total {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+        font-weight: 900;
+        color: var(--ink);
+    }
+
+    .preview-total span:last-child {
+        direction: ltr;
+        color: var(--brand-700);
+    }
+
+    .preview-footer {
+        margin: 10px 0 0;
+        color: var(--text-2);
+        font-size: .82rem;
+        font-weight: 700;
+    }
+
+    .preview-note {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: .78rem;
+        line-height: 1.7;
+    }
+
+    @media (max-width: 992px) {
+        .preview-card {
+            position: static;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .settings-hero {
+            padding: 22px;
+        }
+
+        .settings-hero-content {
+            flex-direction: column;
+        }
+
+        .settings-switch-card {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-layout">
+    <div class="page-header">
+        <h3><i class="bi bi-gear" style="color:var(--brand)"></i> إعدادات النظام</h3>
+        <p class="mb-0">بيانات المتجر التي تظهر في الفواتير والواجهة</p>
+    </div>
+
+    {% if message %}
+    <div class="alert alert-{{ message.type }} d-flex align-items-center gap-2">
+        {% if message.type == 'success' %}
+        <i class="bi bi-check-circle-fill"></i>
+        {% elif message.type == 'danger' or message.type == 'error' %}
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        {% else %}
+        <i class="bi bi-info-circle-fill"></i>
+        {% endif %}
+        <span>{{ message.text }}</span>
+    </div>
+    {% endif %}
+
+    <div class="settings-hero">
+        <div class="settings-hero-content">
+            <div class="settings-hero-icon"><i class="bi bi-shop-window"></i></div>
+            <div>
+                <h6>هوية المتجر والفواتير</h6>
+                <p>اضبط اسم المتجر، بيانات التواصل، العملة، ونص تذييل الفاتورة. هذه البيانات ستظهر في شاشة النظام وإيصالات البيع المطبوعة.</p>
+                <div class="settings-meta">
+                    <span class="meta-pill"><i class="bi bi-receipt"></i> الفواتير</span>
+                    <span class="meta-pill"><i class="bi bi-currency-exchange"></i> العملة</span>
+                    <span class="meta-pill"><i class="bi bi-bell"></i> تنبيهات المخزون</span>
+                    <span class="meta-pill"><i class="bi bi-cash-stack"></i> العُهدة</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 align-items-start">
+        <div class="col-lg-8">
+            <div class="card settings-card">
+                <div class="card-header">
+                    <span><i class="bi bi-sliders"></i> بيانات الإعدادات</span>
+                </div>
+
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('settings') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- ========== بيانات المتجر ========== -->
+                        <div class="section-title">
+                            <i class="bi bi-shop"></i> بيانات المتجر
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">اسم المتجر</label>
+                                <div class="input-icon-wrap">
+                                    <i class="bi bi-shop-window"></i>
+                                    <input type="text" name="store_name" class="form-control"
+                                           value="{{ settings.store_name if settings else 'RUNX' }}" required>
+                                </div>
+                                <div class="form-hint">يظهر أعلى الفاتورة وفي صفحة تسجيل الدخول.</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">رمز العملة</label>
+                                <div class="input-icon-wrap">
+                                    <i class="bi bi-currency-exchange"></i>
+                                    <input type="text" name="currency" class="form-control currency-input"
+                                           value="{{ settings.currency if settings else 'د.ل' }}" required>
+                                </div>
+                                <div class="form-hint">مثال: د.ل، SAR، USD.</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">رقم الهاتف</label>
+                                <div class="input-icon-wrap">
+                                    <i class="bi bi-telephone"></i>
+                                    <input type="text" name="phone" class="form-control"
+                                           value="{{ settings.phone if settings else '' }}" placeholder="مثال: 0910000000">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">العنوان</label>
+                                <div class="input-icon-wrap">
+                                    <i class="bi bi-geo-alt"></i>
+                                    <input type="text" name="address" class="form-control"
+                                           value="{{ settings.address if settings else '' }}" placeholder="عنوان المتجر">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ========== إعدادات الفاتورة ========== -->
+                        <div class="section-title">
+                            <i class="bi bi-receipt-cutoff"></i> إعدادات الفاتورة
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">تذييل الفاتورة</label>
+                            <div class="input-icon-wrap">
+                                <i class="bi bi-chat-quote"></i>
+                                <input type="text" name="invoice_footer" class="form-control"
+                                       value="{{ settings.invoice_footer if settings else 'شكراً لزيارتكم!' }}">
+                            </div>
+                            <div class="form-hint">رسالة قصيرة تظهر في نهاية الفاتورة المطبوعة.</div>
+                        </div>
+
+                        <!-- ========== تنبيهات المخزون ========== -->
+                        <div class="section-title">
+                            <i class="bi bi-bell"></i> التنبيهات
+                        </div>
+
+                        <div class="settings-switch-card mb-4">
+                            <div class="switch-info">
+                                <div class="switch-icon warning"><i class="bi bi-exclamation-triangle"></i></div>
+                                <div>
+                                    <h6>تنبيهات المخزون المنخفض</h6>
+                                    <p>إظهار تنبيهات المنتجات التي وصلت إلى الحد الأدنى في لوحة التحكم.</p>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="low_stock_alert" value="1"
+                                       {% if settings and settings.low_stock_alert %}checked{% endif %}>
+                            </div>
+                        </div>
+
+                        <!-- ========== نظام العُهدة والجلسات ========== -->
+                        <div class="section-title">
+                            <i class="bi bi-cash-stack"></i> نظام العُهدة والجلسات النقدية
+                        </div>
+
+                        <div class="settings-switch-card mb-3">
+                            <div class="switch-info">
+                                <div class="switch-icon brand"><i class="bi bi-lock"></i></div>
+                                <div>
+                                    <h6>إجبار الكاشير على فتح جلسة (عُهدة) قبل البيع</h6>
+                                    <p>عند تفعيل هذا الخيار، لا يمكن للكاشير إتمام أي عملية بيع بدون فتح جلسة نقدية أولاً.</p>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="require_session_close" value="1"
+                                       {% if settings and settings.require_session_close %}checked{% endif %}>
+                            </div>
+                        </div>
+
+                        <div class="settings-switch-card mb-4">
+                            <div class="switch-info">
+                                <div class="switch-icon info"><i class="bi bi-box-arrow-right"></i></div>
+                                <div>
+                                    <h6>تذكير بإغلاق الجلسة عند تسجيل الخروج</h6>
+                                    <p>عند تفعيل هذا الخيار، سيتم توجيه الكاشير إلى صفحة العُهدة عند تسجيل الخروج إذا كانت هناك جلسة مفتوحة.</p>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="auto_close_session" value="1"
+                                       {% if settings and settings.auto_close_session %}checked{% endif %}>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i> حفظ الإعدادات
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card preview-card">
+                <div class="card-header">
+                    <i class="bi bi-receipt"></i> معاينة الفاتورة
+                </div>
+                <div class="card-body">
+                    <div class="preview-receipt">
+                        <h6 class="preview-store">{{ settings.store_name if settings else 'RUNX' }}</h6>
+
+                        {% if settings and settings.address %}
+                        <p class="preview-meta">{{ settings.address }}</p>
+                        {% else %}
+                        <p class="preview-meta">عنوان المتجر</p>
+                        {% endif %}
+
+                        {% if settings and settings.phone %}
+                        <p class="preview-meta">هاتف: {{ settings.phone }}</p>
+                        {% else %}
+                        <p class="preview-meta">هاتف: 0000000000</p>
+                        {% endif %}
+
+                        <div class="preview-line"></div>
+
+                        <p class="preview-meta">فاتورة مبيعات #INV-0001</p>
+                        <p class="preview-meta">منتج تجريبي × 1</p>
+
+                        <div class="preview-total">
+                            <span>الصافي</span>
+                            <span>25.000 {{ settings.currency if settings else 'د.ل' }}</span>
+                        </div>
+
+                        <p class="preview-footer">{{ settings.invoice_footer if settings else 'شكراً لزيارتكم!' }}</p>
+                    </div>
+
+                    <div class="preview-note">
+                        هذه معاينة شكلية فقط لتوضيح البيانات التي ستظهر في الإيصال. يتم استخدام القالب الفعلي عند الطباعة من نقطة البيع.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

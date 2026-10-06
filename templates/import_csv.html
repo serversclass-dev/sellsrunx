@@ -1,0 +1,432 @@
+<!-- ==============================================================================
+     FILE: templates/import_csv.html - استيراد CSV (إعادة تصميم)
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}استيراد المنتجات{% endblock %}
+{% block page_title %}استيراد المنتجات{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-layout {
+        max-width: 980px;
+    }
+
+    .import-hero {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background:
+            radial-gradient(120% 140% at 100% 0%, rgba(15,122,90,.10) 0%, rgba(15,122,90,0) 55%),
+            radial-gradient(90% 120% at 0% 100%, rgba(181,138,52,.10) 0%, rgba(181,138,52,0) 58%),
+            linear-gradient(180deg, var(--surface), var(--surface-2));
+        box-shadow: var(--shadow-sm);
+        padding: 26px 28px;
+    }
+
+    .import-hero::after {
+        content: "";
+        position: absolute;
+        left: -44px;
+        bottom: -70px;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(15,122,90,.08), transparent 70%);
+        pointer-events: none;
+    }
+
+    .import-hero-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 22px;
+        flex-wrap: wrap;
+    }
+
+    .import-icon {
+        width: 58px;
+        height: 58px;
+        flex-shrink: 0;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        font-size: 1.55rem;
+        color: #fff;
+        background: linear-gradient(140deg, var(--brand), var(--brand-700));
+        box-shadow: 0 6px 18px rgba(15,122,90,.32), inset 0 1px 0 rgba(255,255,255,.25);
+    }
+
+    .import-hero h6 {
+        margin: 0;
+        font-weight: 800;
+        font-size: 1.08rem;
+        color: var(--ink);
+    }
+
+    .import-hero p {
+        margin: 5px 0 0;
+        color: var(--text-2);
+        font-size: .9rem;
+        max-width: 56ch;
+    }
+
+    .import-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .meta-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 5px 11px;
+        border-radius: 30px;
+        font-size: .78rem;
+        font-weight: 600;
+        color: var(--text-2);
+        box-shadow: var(--shadow-xs);
+    }
+
+    .meta-pill i {
+        color: var(--brand);
+    }
+
+    .upload-card {
+        border-radius: var(--radius-lg);
+    }
+
+    .upload-drop {
+        position: relative;
+        border: 1.5px dashed var(--border-strong);
+        border-radius: var(--radius);
+        background: var(--surface-2);
+        padding: 26px;
+        text-align: center;
+        transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+    }
+
+    .upload-drop:hover {
+        border-color: var(--brand);
+        background: var(--brand-050);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .upload-drop .upload-mark {
+        width: 58px;
+        height: 58px;
+        margin: 0 auto 12px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: var(--brand-050);
+        color: var(--brand);
+        font-size: 1.65rem;
+    }
+
+    .upload-drop h6 {
+        margin: 0 0 4px;
+        font-weight: 800;
+        color: var(--ink);
+    }
+
+    .upload-drop p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: .86rem;
+    }
+
+    .upload-drop input[type="file"] {
+        background: var(--surface);
+    }
+
+    .rules-card {
+        background: var(--info-050);
+        border: 1px solid #cdddec;
+        border-radius: var(--radius);
+        padding: 15px 16px;
+        color: var(--info);
+        font-size: .86rem;
+    }
+
+    .rules-card .rules-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-weight: 800;
+        margin-bottom: 8px;
+        color: var(--info);
+    }
+
+    .rules-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .rules-list li {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin-top: 6px;
+        color: var(--text-2);
+    }
+
+    .rules-list li i {
+        color: var(--brand);
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+
+    .csv-card .card-header {
+        justify-content: space-between;
+    }
+
+    .csv-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border-radius: 20px;
+        background: var(--brand-050);
+        color: var(--brand-700);
+        padding: 3px 10px;
+        font-size: .72rem;
+        font-weight: 800;
+    }
+
+    .code-wrap {
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: #0f1720;
+    }
+
+    .code-head {
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 14px;
+        background: #151f2b;
+        color: #cbd5df;
+        font-size: .76rem;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(255,255,255,.06);
+        direction: ltr;
+    }
+
+    .code-dots {
+        display: flex;
+        gap: 6px;
+    }
+
+    .code-dots span {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: block;
+    }
+
+    .code-dots span:nth-child(1) { background: #f45b69; }
+    .code-dots span:nth-child(2) { background: #ffbd2e; }
+    .code-dots span:nth-child(3) { background: #27c93f; }
+
+    .csv-code {
+        direction: ltr;
+        text-align: left;
+        margin: 0;
+        padding: 18px;
+        color: #e8edf2;
+        background: transparent;
+        font-size: .88rem;
+        line-height: 1.8;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    .import-step {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 0;
+        border-bottom: 1px dashed var(--border);
+    }
+
+    .import-step:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .step-num {
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        background: var(--brand-050);
+        color: var(--brand-700);
+        font-weight: 800;
+        font-size: .8rem;
+    }
+
+    .import-step h6 {
+        margin: 0;
+        font-size: .9rem;
+        font-weight: 800;
+        color: var(--ink);
+    }
+
+    .import-step p {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: .82rem;
+    }
+
+    @media (max-width: 768px) {
+        .import-hero {
+            padding: 22px;
+        }
+
+        .upload-drop {
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="import-layout">
+    <div class="page-header">
+        <h3><i class="bi bi-file-earmark-arrow-up" style="color:var(--brand)"></i> استيراد منتجات عبر CSV</h3>
+        <p class="mb-0">ارفع ملف المنتجات مرة واحدة وسيتم إدخالها في المخزون مباشرة</p>
+    </div>
+
+    {% if message %}
+    <div class="alert alert-success d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill"></i> <span>{{ message }}</span>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="alert alert-danger d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle-fill"></i> <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <div class="import-hero mb-4">
+        <div class="import-hero-content">
+            <div class="d-flex align-items-start gap-3">
+                <div class="import-icon"><i class="bi bi-filetype-csv"></i></div>
+                <div>
+                    <h6>استيراد سريع لقائمة المنتجات</h6>
+                    <p>جهّز ملف CSV بنفس ترتيب الأعمدة المطلوب، ثم ارفعه هنا لإضافة المنتجات وتحديث الكميات دفعة واحدة.</p>
+                    <div class="import-meta">
+                        <span class="meta-pill"><i class="bi bi-upc-scan"></i> يدعم الباركود</span>
+                        <span class="meta-pill"><i class="bi bi-box-seam"></i> كميات المخزون</span>
+                        <span class="meta-pill"><i class="bi bi-cash-stack"></i> أسعار الشراء والبيع</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 align-items-start">
+        <div class="col-lg-7">
+            <div class="card upload-card">
+                <div class="card-header">
+                    <i class="bi bi-cloud-upload"></i> رفع الملف
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('import_csv') }}" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="upload-drop mb-3">
+                            <div class="upload-mark"><i class="bi bi-file-earmark-arrow-up"></i></div>
+                            <h6>اختر ملف CSV</h6>
+                            <p>يفضّل أن يكون الملف محفوظاً بترميز UTF-8 حتى تظهر الأسماء العربية بشكل صحيح</p>
+                            <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                        </div>
+
+                        <div class="rules-card mb-3">
+                            <div class="rules-title">
+                                <i class="bi bi-info-circle-fill"></i>
+                                قبل الاستيراد
+                            </div>
+                            <ul class="rules-list">
+                                <li><i class="bi bi-check2"></i><span>يجب أن يحتوي الملف على الأعمدة بالترتيب: barcode, name, cost_price, sell_price, quantity</span></li>
+                                <li><i class="bi bi-check2"></i><span>الصف الأول يتم تجاهله باعتباره رأس الجدول.</span></li>
+                                <li><i class="bi bi-check2"></i><span>يمكن ترك الباركود فارغاً للمنتجات التي لا تملك باركود.</span></li>
+                            </ul>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-upload me-1"></i> رفع واستيراد
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-list-check"></i> خطوات بسيطة
+                </div>
+                <div class="card-body">
+                    <div class="import-step">
+                        <div class="step-num">1</div>
+                        <div>
+                            <h6>حضّر الأعمدة</h6>
+                            <p>اجعل أسماء الأعمدة وترتيبها مطابقاً للمثال.</p>
+                        </div>
+                    </div>
+                    <div class="import-step">
+                        <div class="step-num">2</div>
+                        <div>
+                            <h6>راجع الأرقام</h6>
+                            <p>تأكد من أسعار الشراء والبيع والكمية قبل الرفع.</p>
+                        </div>
+                    </div>
+                    <div class="import-step">
+                        <div class="step-num">3</div>
+                        <div>
+                            <h6>ارفع الملف</h6>
+                            <p>بعد نجاح العملية ستظهر المنتجات في صفحة المنتجات.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card csv-card">
+                <div class="card-header">
+                    <span><i class="bi bi-file-earmark-spreadsheet"></i> مثال على محتوى الملف</span>
+                    <span class="csv-badge"><i class="bi bi-filetype-csv"></i> CSV</span>
+                </div>
+                <div class="card-body">
+                    <div class="code-wrap">
+                        <div class="code-head">
+                            <span>products.csv</span>
+                            <div class="code-dots"><span></span><span></span><span></span></div>
+                        </div>
+<pre class="csv-code">barcode,name,cost_price,sell_price,quantity
+1234567890,منتج تجريبي 1,10.5,15.0,50
+0987654321,منتج تجريبي 2,5.0,8.5,100
+,منتج بدون باركود,20.0,30.0,25</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

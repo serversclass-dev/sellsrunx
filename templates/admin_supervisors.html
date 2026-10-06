@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}مراقبة المشرفين{% endblock %}
+{% block page_title %}مراقبة المشرفين 🔎{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sup-card { border-radius:14px; border:1px solid var(--border); background:#fff; padding:18px 20px; transition:box-shadow .2s; }
+    .sup-card:hover { box-shadow:var(--shadow-md); }
+    .sup-avatar { width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;display:grid;place-items:center;font-size:1.2rem;font-weight:800;flex-shrink:0; }
+    .log-action { font-size:.72rem;font-weight:700;padding:2px 10px;border-radius:20px;background:#ede9fe;color:#4f46e5; }
+    .log-row { display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border); }
+    .log-row:last-child { border-bottom:0; }
+    .log-dot { width:8px;height:8px;border-radius:50%;background:#6366f1;margin-top:6px;flex-shrink:0; }
+    .stat-chip { display:inline-block;background:#f1f5f9;border-radius:10px;padding:5px 14px;font-size:.83rem;font-weight:600;margin:2px; }
+    .stat-chip span { color:#6366f1; }
+    .detail-header { background:linear-gradient(135deg,#6366f1,#4338ca);color:#fff;border-radius:16px;padding:24px;margin-bottom:1.5rem; }
+    .back-btn { margin-bottom:1rem; }
+    .action-LOGIN    { background:#ecfdf5;color:#065f46; }
+    .action-OPEN     { background:#eff6ff;color:#1d4ed8; }
+    .action-CLOSE    { background:#fef2f2;color:#991b1b; }
+    .action-INVOICE  { background:#f0fdf4;color:#166534; }
+    .action-RETURN   { background:#fff7ed;color:#9a3412; }
+    .action-DEFAULT  { background:#ede9fe;color:#4f46e5; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if supervisors is not none %}
+{# ============ قائمة المشرفين ============ #}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h3><i class="bi bi-shield-check"></i> مراقبة المشرفين</h3>
+        <p class="text-muted mb-0">عرض كامل لنشاطات ومبيعات المشرفين</p>
+    </div>
+</div>
+
+{# بطاقات إحصائيات المشرفين #}
+{% if sales_stats %}
+<div class="row g-3 mb-4">
+    {% for s in sales_stats %}
+    <div class="col-md-6 col-lg-4">
+        <div class="sup-card">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="sup-avatar">{{ s.name[:1] }}</div>
+                <div>
+                    <div class="fw-bold" style="font-size:1rem;">{{ s.name }}</div>
+                    <small class="text-muted">{{ s.username }}</small>
+                </div>
+                <a href="{{ url_for('admin_supervisor_detail', user_id=s.id) }}" 
+                   class="btn btn-sm btn-outline-primary ms-auto">
+                    <i class="bi bi-eye"></i> تفاصيل
+                </a>
+            </div>
+            <div>
+                <span class="stat-chip">فواتير: <span>{{ s.total_invoices }}</span></span>
+                <span class="stat-chip">مبيعات: <span>{{ "%.3f" % s.total_sales }}</span></span>
+                <span class="stat-chip">نقدي: <span>{{ "%.3f" % s.cash_sales }}</span></span>
+            </div>
+            {% if s.last_sale %}
+            <div class="mt-2"><small class="text-muted"><i class="bi bi-clock"></i> آخر بيع: {{ s.last_sale }}</small></div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">لا يوجد مشرفون مسجلون حتى الآن.</div>
+{% endif %}
+
+{# آخر النشاطات #}
+{% if recent_logs %}
+<div class="card">
+    <div class="card-header"><i class="bi bi-activity"></i> آخر نشاطات المشرفين</div>
+    <div class="card-body p-0" style="max-height:500px;overflow-y:auto;">
+        <div style="padding:12px 20px;">
+        {% for log in recent_logs %}
+        <div class="log-row">
+            <div class="log-dot mt-1"></div>
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="fw-bold">{{ log.user_name }}</span>
+                    <span class="log-action 
+                        {% if 'LOGIN' in log.action %}action-LOGIN
+                        {% elif 'OPEN' in log.action %}action-OPEN
+                        {% elif 'CLOSE' in log.action %}action-CLOSE
+                        {% elif 'INVOICE' in log.action %}action-INVOICE
+                        {% elif 'RETURN' in log.action %}action-RETURN
+                        {% else %}action-DEFAULT{% endif %}">
+                        {{ log.action }}
+                    </span>
+                    <small class="text-muted">{{ log.created_at }}</small>
+                </div>
+                {% if log.details %}
+                <div style="font-size:.83rem;color:#64748b;margin-top:2px;">{{ log.details }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+{# ============ تفاصيل مشرف واحد ============ #}
+<a href="{{ url_for('admin_supervisors') }}" class="btn btn-outline-secondary back-btn">
+    <i class="bi bi-arrow-right"></i> العودة للقائمة
+</a>
+
+<div class="detail-header">
+    <div class="d-flex align-items-center gap-3">
+        <div class="sup-avatar" style="background:rgba(255,255,255,.2);font-size:1.5rem;">{{ detail_supervisor.name[:1] }}</div>
+        <div>
+            <h4 style="margin:0;font-weight:800;">{{ detail_supervisor.name }}</h4>
+            <div style="opacity:.8;font-size:.9rem;">{{ detail_supervisor.username }} · مشرف</div>
+        </div>
+        <span class="ms-auto badge {% if detail_supervisor.is_active %}bg-success{% else %}bg-danger{% endif %} fs-6">
+            {{ 'نشط' if detail_supervisor.is_active else 'معطّل' }}
+        </span>
+    </div>
+</div>
+
+{# إحصائيات #}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <div style="font-size:2rem;font-weight:900;color:#6366f1;">{{ total_stats.invoice_count or 0 }}</div>
+                <div class="text-muted" style="font-size:.82rem;">إجمالي الفواتير</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <div style="font-size:1.5rem;font-weight:900;color:#10b981;">{{ "%.3f" % (total_stats.total_sales or 0) }}</div>
+                <div class="text-muted" style="font-size:.82rem;">إجمالي المبيعات</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <div style="font-size:1.5rem;font-weight:900;color:#f59e0b;">{{ "%.3f" % (total_stats.cash_sales or 0) }}</div>
+                <div class="text-muted" style="font-size:.82rem;">نقدي</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-3">
+                <div style="font-size:1.5rem;font-weight:900;color:#3b82f6;">{{ "%.3f" % ((total_stats.card_sales or 0) + (total_stats.transfer_sales or 0)) }}</div>
+                <div class="text-muted" style="font-size:.82rem;">بطاقة / تحويل</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    {# سجل النشاط #}
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-activity"></i> سجل النشاط الكامل</div>
+            <div class="card-body p-0" style="max-height:420px;overflow-y:auto;">
+                <div style="padding:12px 16px;">
+                {% if logs %}
+                    {% for log in logs %}
+                    <div class="log-row">
+                        <div class="log-dot"></div>
+                        <div>
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <span class="log-action
+                                    {% if 'LOGIN' in log.action %}action-LOGIN
+                                    {% elif 'OPEN' in log.action %}action-OPEN
+                                    {% elif 'CLOSE' in log.action %}action-CLOSE
+                                    {% elif 'INVOICE' in log.action %}action-INVOICE
+                                    {% elif 'RETURN' in log.action %}action-RETURN
+                                    {% else %}action-DEFAULT{% endif %}">
+                                    {{ log.action }}
+                                </span>
+                                <small class="text-muted">{{ log.created_at }}</small>
+                            </div>
+                            {% if log.details %}
+                            <div style="font-size:.82rem;color:#64748b;">{{ log.details }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-4"><i class="bi bi-inbox"></i> لا يوجد نشاط</p>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# المنتجات المباعة #}
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-box-seam"></i> المنتجات المباعة</div>
+            <div class="card-body p-0" style="max-height:200px;overflow-y:auto;">
+                {% if products_sold %}
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr><th>المنتج</th><th class="text-center">الكمية</th><th class="text-end">الإيراد</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for p in products_sold %}
+                    <tr>
+                        <td class="fw-semibold">{{ p.product_name }}</td>
+                        <td class="text-center"><span class="badge bg-secondary">{{ "%.2f" % p.total_qty }}</span></td>
+                        <td class="text-end fw-bold text-success">{{ "%.3f" % p.total_revenue }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted text-center py-3"><i class="bi bi-inbox"></i> لا توجد مبيعات</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {# الجلسات #}
+        <div class="card">
+            <div class="card-header"><i class="bi bi-cash-stack"></i> جلسات العُهدة</div>
+            <div class="card-body p-0" style="max-height:180px;overflow-y:auto;">
+                {% if sessions %}
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr><th>الحالة</th><th>افتتاحي</th><th>فواتير</th><th>مبيعات</th><th>فتح</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for s in sessions %}
+                    <tr>
+                        <td>
+                            {% if s.status == 'open' %}
+                            <span class="badge bg-success">مفتوحة</span>
+                            {% else %}
+                            <span class="badge bg-secondary">مغلقة</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ "%.3f" % s.opening_balance }}</td>
+                        <td><span class="badge bg-primary">{{ s.invoice_count }}</span></td>
+                        <td class="fw-bold text-success">{{ "%.3f" % (s.total_sales or 0) }}</td>
+                        <td><small>{{ s.opened_at }}</small></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted text-center py-3"><i class="bi bi-inbox"></i> لا توجد جلسات</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

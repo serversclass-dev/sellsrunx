@@ -1,0 +1,421 @@
+<!-- ==============================================================================
+     FILE: templates/product_movements.html - حركة المنتج وسجل المخزون الكامل
+     ============================================================================== -->
+{% extends "base.html" %}
+
+{% block title %}حركة المنتج — {{ product.name }}{% endblock %}
+{% block page_title %}حركة المنتج{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* بطاقة المنتج */
+    .product-hero {
+        border-radius: var(--radius-lg);
+        background:
+            radial-gradient(120% 140% at 100% 0%, rgba(15,122,90,.12) 0%, transparent 55%),
+            radial-gradient(80% 100% at 0% 100%, rgba(15,122,90,.07) 0%, transparent 58%),
+            var(--surface);
+        border: 1px solid var(--border);
+        padding: 22px 24px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+    }
+
+    .product-hero-avatar {
+        width: 64px; height: 64px; flex-shrink: 0;
+        border-radius: 18px; display: grid; place-items: center;
+        background: var(--brand-050); color: var(--brand);
+        font-size: 1.7rem; font-weight: 900;
+        border: 2px solid var(--brand-100);
+    }
+
+    .product-hero-info { flex: 1; min-width: 200px; }
+    .product-hero-name { font-size: 1.2rem; font-weight: 900; color: var(--ink); margin: 0 0 4px; }
+    .product-hero-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .meta-chip {
+        display: inline-flex; align-items: center; gap: 5px;
+        border-radius: 20px; padding: 3px 10px;
+        font-size: .75rem; font-weight: 800;
+    }
+    .meta-chip.barcode  { background: var(--bg); border: 1px solid var(--border); color: var(--text-2); direction: ltr; font-family: monospace; }
+    .meta-chip.category { background: var(--info-050); color: var(--info); }
+    .meta-chip.unit     { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+
+    .product-hero-stock {
+        text-align: center; min-width: 110px;
+        padding: 14px 18px; border-radius: 14px;
+        background: var(--brand); color: #fff;
+        box-shadow: 0 8px 24px rgba(15,122,90,.25);
+    }
+    .product-hero-stock .stock-val  { font-size: 2rem; font-weight: 900; line-height: 1; }
+    .product-hero-stock .stock-lbl  { font-size: .75rem; opacity: .82; margin-top: 3px; }
+
+    /* فلتر التاريخ */
+    .filter-bar {
+        display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+        padding: 16px 18px; border-radius: var(--radius);
+        background: var(--surface-2); border: 1px solid var(--border);
+        margin-bottom: 20px;
+    }
+    .filter-bar .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-bar label { font-size: .8rem; font-weight: 800; color: var(--text-2); }
+    .filter-bar .form-control { min-height: 40px; font-size: .88rem; }
+
+    /* بطاقات الإحصائيات */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .stat-mini {
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        padding: 14px 16px;
+        background: var(--surface);
+    }
+    .stat-mini .sm-label { font-size: .76rem; font-weight: 800; color: var(--muted); margin-bottom: 4px; }
+    .stat-mini .sm-val   { font-size: 1.3rem; font-weight: 900; direction: ltr; color: var(--ink); }
+    .stat-mini.in  { background: var(--success-050); border-color: #a7f3d0; }
+    .stat-mini.in  .sm-val { color: var(--success); }
+    .stat-mini.out { background: var(--danger-050);  border-color: #f0c8cf; }
+    .stat-mini.out .sm-val { color: var(--danger); }
+    .stat-mini.net .sm-val { color: var(--brand); }
+    .stat-mini.cnt .sm-val { color: var(--info); }
+
+    /* جدول الحركات */
+    .movements-table th,
+    .movements-table td { white-space: nowrap; vertical-align: middle; }
+    .movements-table th:nth-child(4),
+    .movements-table td:nth-child(4) { white-space: normal; min-width: 180px; }
+
+    /* نوع الحركة */
+    .type-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        border-radius: 20px; padding: 4px 12px;
+        font-size: .76rem; font-weight: 900;
+    }
+    .type-badge.sale     { background: #fef2f2; color: #b91c1c; }
+    .type-badge.purchase { background: var(--success-050); color: #065f46; }
+    .type-badge.return   { background: #fff7ed; color: #c2410c; }
+    .type-badge.adjustment { background: var(--info-050); color: var(--info); }
+
+    /* الكمية */
+    .qty-cell {
+        display: inline-flex; align-items: center; gap: 5px;
+        border-radius: 20px; padding: 4px 11px;
+        font-size: .82rem; font-weight: 900; direction: ltr;
+        min-width: 70px; justify-content: center;
+    }
+    .qty-cell.pos { background: var(--success-050); color: var(--success); }
+    .qty-cell.neg { background: #fef2f2; color: #b91c1c; }
+
+    /* الرصيد */
+    .balance-cell {
+        font-weight: 900; direction: ltr;
+        color: var(--brand); font-size: .9rem;
+    }
+
+    /* رابط المصدر */
+    .source-link {
+        display: inline-flex; align-items: center; gap: 5px;
+        color: var(--brand); text-decoration: none;
+        font-weight: 700; font-size: .82rem;
+        border-bottom: 1px dashed var(--brand-100);
+        transition: color .15s;
+    }
+    .source-link:hover { color: var(--brand-700); border-bottom-style: solid; }
+
+    .source-text { font-size: .82rem; color: var(--text-2); font-weight: 700; }
+
+    /* رصيد البداية */
+    .balance-start-row td {
+        background: var(--brand-050) !important;
+        font-weight: 800; color: var(--brand-700);
+        font-size: .82rem;
+    }
+
+    /* حالة فارغة */
+    .empty-movements {
+        text-align: center; padding: 60px 20px; color: var(--muted);
+    }
+    .empty-movements .eico {
+        width: 72px; height: 72px; margin: 0 auto 16px;
+        border-radius: 20px; display: grid; place-items: center;
+        background: var(--bg); font-size: 2rem; color: var(--muted);
+    }
+    .empty-movements h6 { color: var(--text-2); font-weight: 800; margin: 0 0 4px; }
+    .empty-movements p  { font-size: .84rem; margin: 0; }
+
+    /* شريط التصفية السريعة */
+    .quick-filter-bar {
+        display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .qf-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        border-radius: 20px; padding: 5px 13px;
+        font-size: .76rem; font-weight: 800; cursor: pointer;
+        border: 1.5px solid var(--border); background: var(--surface);
+        color: var(--text-2); transition: all .15s;
+    }
+    .qf-btn:hover, .qf-btn.active { border-color: var(--brand); background: var(--brand-050); color: var(--brand); }
+    .qf-btn.active { box-shadow: 0 0 0 2px var(--brand-100); }
+
+    @media (max-width: 768px) {
+        .stats-row { grid-template-columns: repeat(2, 1fr); }
+        .product-hero { flex-direction: column; align-items: flex-start; }
+        .filter-bar { flex-direction: column; }
+        .filter-bar .btn { width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- رأس الصفحة -->
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h3><i class="bi bi-graph-up-arrow" style="color:var(--brand)"></i> حركة المنتج</h3>
+        <p class="mb-0">سجل كامل لحركات المخزون — دخول وخروج وتعديلات</p>
+    </div>
+    <a href="{{ url_for('products') }}" class="btn btn-light">
+        <i class="bi bi-arrow-right me-1"></i> العودة للمنتجات
+    </a>
+</div>
+
+<!-- بطاقة المنتج -->
+<div class="product-hero">
+    <div class="product-hero-avatar">{{ product.name[:1] if product.name else '?' }}</div>
+    <div class="product-hero-info">
+        <div class="product-hero-name">{{ product.name }}</div>
+        <div class="product-hero-meta">
+            {% if product.barcode %}
+            <span class="meta-chip barcode"><i class="bi bi-upc"></i>{{ product.barcode }}</span>
+            {% endif %}
+            {% if product.category_name %}
+            <span class="meta-chip category"><i class="bi bi-tag"></i>{{ product.category_name }}</span>
+            {% endif %}
+            <span class="meta-chip unit"><i class="bi bi-box"></i>{{ product.unit or 'قطعة' }}</span>
+        </div>
+    </div>
+    <div class="product-hero-stock">
+        <div class="stock-val">{{ "%.2f"|format(product.current_stock or 0) }}</div>
+        <div class="stock-lbl">الرصيد الحالي</div>
+    </div>
+</div>
+
+<!-- فلتر التاريخ -->
+<form method="GET" action="{{ url_for('product_movements', product_id=product.id) }}" class="filter-bar">
+    <div class="filter-group">
+        <label><i class="bi bi-calendar-event me-1"></i> من تاريخ</label>
+        <input type="date" name="from" class="form-control" value="{{ from_date }}">
+    </div>
+    <div class="filter-group">
+        <label><i class="bi bi-calendar-event me-1"></i> إلى تاريخ</label>
+        <input type="date" name="to" class="form-control" value="{{ to_date }}">
+    </div>
+    <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-funnel me-1"></i> عرض الحركة
+    </button>
+    <a href="{{ url_for('product_movements', product_id=product.id) }}" class="btn btn-light">
+        <i class="bi bi-arrow-counterclockwise me-1"></i> إعادة ضبط
+    </a>
+    <div class="me-auto" style="font-size:.8rem;color:var(--muted);align-self:center;">
+        <i class="bi bi-calendar-range me-1"></i> {{ from_date }} → {{ to_date }}
+    </div>
+</form>
+
+<!-- إحصائيات الفترة -->
+<div class="stats-row">
+    <div class="stat-mini in">
+        <div class="sm-label"><i class="bi bi-arrow-down-circle me-1"></i> إجمالي الداخل</div>
+        <div class="sm-val">+{{ "%.2f"|format(stats.total_in) }}</div>
+    </div>
+    <div class="stat-mini out">
+        <div class="sm-label"><i class="bi bi-arrow-up-circle me-1"></i> إجمالي الخارج</div>
+        <div class="sm-val">-{{ "%.2f"|format(stats.total_out) }}</div>
+    </div>
+    <div class="stat-mini net">
+        <div class="sm-label"><i class="bi bi-calculator me-1"></i> صافي الحركة</div>
+        <div class="sm-val">{{ "%+.2f"|format(stats.net_movement) }}</div>
+    </div>
+    <div class="stat-mini cnt">
+        <div class="sm-label"><i class="bi bi-list-check me-1"></i> عدد الحركات</div>
+        <div class="sm-val">{{ stats.count }}</div>
+    </div>
+</div>
+
+<!-- تصفية سريعة -->
+{% if movements %}
+<div class="quick-filter-bar">
+    <button class="qf-btn active" onclick="filterType('all', this)">
+        <i class="bi bi-list-ul"></i> الكل ({{ movements|length }})
+    </button>
+    {% set sales_count = movements | selectattr('type', 'equalto', 'sale') | list | length %}
+    {% set purchase_count = movements | selectattr('type', 'equalto', 'purchase') | list | length %}
+    {% set return_count = movements | selectattr('type', 'equalto', 'return') | list | length %}
+    {% set adj_count = movements | selectattr('type', 'equalto', 'adjustment') | list | length %}
+    {% if sales_count > 0 %}
+    <button class="qf-btn" onclick="filterType('sale', this)">
+        <i class="bi bi-cart-dash" style="color:#b91c1c;"></i> مبيعات ({{ sales_count }})
+    </button>
+    {% endif %}
+    {% if purchase_count > 0 %}
+    <button class="qf-btn" onclick="filterType('purchase', this)">
+        <i class="bi bi-cart-plus" style="color:var(--success);"></i> مشتريات ({{ purchase_count }})
+    </button>
+    {% endif %}
+    {% if return_count > 0 %}
+    <button class="qf-btn" onclick="filterType('return', this)">
+        <i class="bi bi-arrow-return-right" style="color:#c2410c;"></i> مرتجعات ({{ return_count }})
+    </button>
+    {% endif %}
+    {% if adj_count > 0 %}
+    <button class="qf-btn" onclick="filterType('adjustment', this)">
+        <i class="bi bi-sliders" style="color:var(--info);"></i> تعديلات ({{ adj_count }})
+    </button>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- جدول الحركات -->
+<div class="card">
+    <div class="card-header justify-content-between">
+        <span><i class="bi bi-clock-history"></i> سجل الحركات</span>
+        <span style="font-size:.8rem;color:var(--muted);">
+            الرصيد قبل الفترة: <strong style="color:var(--ink);">{{ "%.2f"|format(stats.balance_before) }}</strong>
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 movements-table" id="movements-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>التاريخ والوقت</th>
+                    <th>نوع الحركة</th>
+                    <th>المصدر / السبب</th>
+                    <th>الكمية</th>
+                    <th>الرصيد بعد الحركة</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if movements %}
+                <!-- صف رصيد البداية -->
+                <tr class="balance-start-row">
+                    <td colspan="4" style="text-align:center;">
+                        <i class="bi bi-flag me-1"></i>
+                        رصيد بداية الفترة (قبل {{ from_date }})
+                    </td>
+                    <td>—</td>
+                    <td class="balance-cell">{{ "%.2f"|format(stats.balance_before) }}</td>
+                </tr>
+
+                {% for m in movements %}
+                <tr data-type="{{ m.type }}">
+                    <td style="color:var(--muted);font-size:.8rem;">{{ loop.index }}</td>
+                    <td style="font-size:.82rem;color:var(--text-2);white-space:nowrap;">
+                        {{ m.created_at }}
+                    </td>
+                    <td>
+                        {% if m.type == 'sale' %}
+                        <span class="type-badge sale">
+                            <i class="bi bi-cart-dash"></i> بيع
+                        </span>
+                        {% elif m.type == 'purchase' %}
+                        <span class="type-badge purchase">
+                            <i class="bi bi-cart-plus"></i> شراء
+                        </span>
+                        {% elif m.type == 'return' %}
+                        <span class="type-badge return">
+                            <i class="bi bi-arrow-return-right"></i> مرتجع
+                        </span>
+                        {% else %}
+                        <span class="type-badge adjustment">
+                            <i class="bi bi-sliders"></i> تعديل
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if m.link %}
+                        <a href="{{ m.link }}" class="source-link">
+                            <i class="bi bi-box-arrow-up-left" style="font-size:.7rem;"></i>
+                            {{ m.source }}
+                        </a>
+                        {% else %}
+                        <span class="source-text">{{ m.source }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if m.quantity > 0 %}
+                        <span class="qty-cell pos">
+                            <i class="bi bi-arrow-down"></i>+{{ "%.2f"|format(m.quantity) }}
+                        </span>
+                        {% else %}
+                        <span class="qty-cell neg">
+                            <i class="bi bi-arrow-up"></i>{{ "%.2f"|format(m.quantity) }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="balance-cell">{{ "%.2f"|format(m.balance) }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% else %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-movements">
+                            <div class="eico"><i class="bi bi-inbox"></i></div>
+                            <h6>لا توجد حركات في هذه الفترة</h6>
+                            <p>جرّب اختيار فترة زمنية مختلفة أو تحقق من أن المنتج له حركات مسجّلة</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if movements %}
+    <!-- ملخص نهاية الجدول -->
+    <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--surface-2);">
+        <div style="font-size:.84rem;color:var(--muted);">
+            <i class="bi bi-info-circle me-1"></i>
+            إجمالي {{ movements|length }} حركة خلال الفترة من {{ from_date }} إلى {{ to_date }}
+        </div>
+        <div style="font-weight:900;font-size:1rem;color:var(--brand);">
+            الرصيد الحالي الفعلي:
+            <span style="font-size:1.2rem;margin-right:6px;">{{ "%.2f"|format(product.current_stock or 0) }}</span>
+            {{ product.unit or 'قطعة' }}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// تصفية الجدول حسب نوع الحركة
+function filterType(type, btn) {
+    // تحديث الأزرار
+    document.querySelectorAll('.qf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // تصفية الصفوف
+    document.querySelectorAll('#movements-table tbody tr[data-type]').forEach(row => {
+        if (type === 'all' || row.dataset.type === type) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}
